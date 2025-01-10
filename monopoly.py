@@ -3,23 +3,24 @@ import random
 import os
 from typing import Dict, List, Optional
 
+
 class MonopolySystem:
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
         self.map_file = os.path.join(data_dir, "map_config.json")
         self.events_file = os.path.join(data_dir, "events_config.json")
         self.properties_file = os.path.join(data_dir, "properties.json")
-        
+
         # 初始化地图和事件数据
         self._init_map_config()
         self._init_events_config()
         self._init_properties()
-        
+
         # 加载数据
         self.map_data = self._load_json(self.map_file)
         self.events_data = self._load_json(self.events_file)
         self.properties_data = self._load_json(self.properties_file)
-        
+
     def _init_map_config(self):
         """初始化地图配置"""
         if not os.path.exists(self.map_file):
@@ -30,7 +31,7 @@ class MonopolySystem:
                     "12": {"type": "直辖市", "name": "上海", "description": "繁华的国际大都市", "region": "直辖市"},
                     "25": {"type": "直辖市", "name": "重庆", "description": "山城魅力", "region": "直辖市"},
                     "37": {"type": "直辖市", "name": "天津", "description": "北方港口城市", "region": "直辖市"},
-                    
+
                     "5": {"type": "省会", "name": "广州", "description": "广东省会", "region": "省会"},
                     "17": {"type": "省会", "name": "成都", "description": "四川省会", "region": "省会"},
                     "30": {"type": "省会", "name": "杭州", "description": "浙江省会", "region": "省会"},
@@ -39,7 +40,7 @@ class MonopolySystem:
                     "18": {"type": "省会", "name": "长沙", "description": "湖南省会", "region": "省会"},
                     "31": {"type": "省会", "name": "西安", "description": "陕西省会", "region": "省会"},
                     "43": {"type": "省会", "name": "郑州", "description": "河南省会", "region": "省会"},
-                    
+
                     "7": {"type": "地级市", "name": "苏州", "description": "江苏重要城市", "region": "地级市"},
                     "20": {"type": "地级市", "name": "青岛", "description": "山东重要城市", "region": "地级市"},
                     "32": {"type": "地级市", "name": "厦门", "description": "福建重要城市", "region": "地级市"},
@@ -48,7 +49,7 @@ class MonopolySystem:
                     "21": {"type": "地级市", "name": "无锡", "description": "江苏重要城市", "region": "地级市"},
                     "33": {"type": "地级市", "name": "珠海", "description": "广东重要城市", "region": "地级市"},
                     "46": {"type": "地级市", "name": "深圳", "description": "广东重要城市", "region": "地级市"},
-                    
+
                     "2": {"type": "县城", "name": "周庄古镇", "description": "江南水乡", "region": "县城"},
                     "15": {"type": "县城", "name": "凤凰古城", "description": "湘西名城", "region": "县城"},
                     "27": {"type": "县城", "name": "婺源县", "description": "徽派建筑", "region": "县城"},
@@ -57,7 +58,7 @@ class MonopolySystem:
                     "16": {"type": "县城", "name": "平遥古城", "description": "山西古城", "region": "县城"},
                     "28": {"type": "县城", "name": "西塘古镇", "description": "江南古镇", "region": "县城"},
                     "41": {"type": "县城", "name": "阳朔县", "description": "桂林山水", "region": "县城"},
-                    
+
                     "10": {"type": "乡村", "name": "婺源篁岭", "description": "徽州晒秋", "region": "乡村"},
                     "22": {"type": "乡村", "name": "阿坝草原", "description": "四川草原", "region": "乡村"},
                     "35": {"type": "乡村", "name": "婺源晓起", "description": "徽州村落", "region": "乡村"},
@@ -150,7 +151,7 @@ class MonopolySystem:
         """购买地块"""
         if str(position) in self.properties_data:
             return False
-        
+
         self.properties_data[str(position)] = {
             "owner": player_id,
             "level": 1,
@@ -163,7 +164,7 @@ class MonopolySystem:
         """计算地块价格"""
         block = self.get_block_info(position)
         base_price = 500
-        
+
         # 根据地区类型设置基础价格
         region_multipliers = {
             "直辖市": 5.0,
@@ -173,10 +174,10 @@ class MonopolySystem:
             "乡村": 1.0,
             "其他": 1.0
         }
-        
+
         # 根据距离起点的远近调整价格
         distance_factor = 1 + (position % 10) * 0.1
-        
+
         # 计算最终价格
         final_price = int(base_price * region_multipliers[block["region"]] * distance_factor)
         return final_price
@@ -186,10 +187,10 @@ class MonopolySystem:
         property_data = self.properties_data.get(str(position))
         if not property_data:
             return 0
-        
+
         block = self.get_block_info(position)
         base_rent = property_data["price"] * 0.1
-        
+
         # 根据地区类型设置租金倍率
         region_multipliers = {
             "直辖市": 2.0,
@@ -199,10 +200,10 @@ class MonopolySystem:
             "乡村": 1.0,
             "其他": 1.0
         }
-        
+
         # 根据地产等级增加租金
         level_multiplier = property_data["level"] * 0.5
-        
+
         # 计算最终租金
         final_rent = int(base_rent * region_multipliers[block["region"]] * (1 + level_multiplier))
         return final_rent
@@ -212,7 +213,7 @@ class MonopolySystem:
         property_data = self.properties_data.get(str(position))
         if not property_data:
             return None
-        
+
         block = self.get_block_info(position)
         return {
             "name": block["name"],
@@ -234,11 +235,11 @@ class MonopolySystem:
         """升级地产"""
         if str(position) not in self.properties_data:
             return False
-            
+
         property_data = self.properties_data[str(position)]
         if property_data["level"] >= 3:  # 最高3级
             return False
-            
+
         property_data["level"] += 1
         self._save_json(self.properties_file, self.properties_data)
         return True
@@ -248,4 +249,4 @@ class MonopolySystem:
         return [
             int(pos) for pos, data in self.properties_data.items()
             if data["owner"] == player_id
-        ] 
+        ]

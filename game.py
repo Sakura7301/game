@@ -18,6 +18,7 @@ from .equipment import Equipment
 import json
 from .monopoly import MonopolySystem
 
+
 @plugins.register(
     name="Game",
     desc="一个简单的文字游戏系统",
@@ -29,7 +30,7 @@ class Game(Plugin):
     # 将 STANDARD_FIELDS 定义为类变量
     STANDARD_FIELDS = [
         'user_id', 'nickname', 'gold', 'level', 'last_checkin',
-        'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp', 
+        'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
         'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
         'last_item_use', 'spouse', 'marriage_proposal', 'last_attack',
         'position'
@@ -43,30 +44,30 @@ class Game(Plugin):
     # 添加新的类变量
     REMINDER_COST = 50  # 每条提醒消息的费用
     REMINDER_DURATION = 24 * 60 * 60  # 提醒持续时间(24小时)
-    
+
     def __init__(self):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-        
+
         # 添加进程锁和状态恢复逻辑
         try:
             self.data_dir = os.path.join(os.path.dirname(__file__), "data")
             os.makedirs(self.data_dir, exist_ok=True)
-            
+
             # 初始化进程锁文件路径
             self.process_lock_file = os.path.join(self.data_dir, self.PROCESS_LOCK_FILE)
-            
+
             # 恢复游戏状态和定时任务
             self._restore_game_state()
-            
+
             # 确保数据目录"""  """存在
             self.player_file = os.path.join(self.data_dir, "players.csv")
             self.shop_file = os.path.join(self.data_dir, "shop_items.csv")
-            
+
             # 初始化物品系统
             self.item_system = Item(self.data_dir)
             self.item_system.init_default_items()
-            
+
             # 初始化商店数据文件
             if not os.path.exists(self.shop_file):
                 with open(self.shop_file, 'w', newline='', encoding='utf-8') as f:
@@ -86,24 +87,24 @@ class Game(Plugin):
                         ['金制鱼竿', '1000']
                     ]
                     writer.writerows(default_items)
-            
+
             # 初始化玩家数据文件
             if not os.path.exists(self.player_file):
                 with open(self.player_file, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow(self.STANDARD_FIELDS)
-            
+
             # 初始化钓鱼系统
             self.fishing_system = FishingSystem(self.data_dir)
             self.shop = Shop(self)
-            
+
             # 初始化装备系统
             self.equipment_system = Equipment(self)
-            
+
             # 初始化提醒系统
             self.reminders = {}  # 格式: {user_id: {'content': str, 'expire_time': int}}
             self._load_reminders()  # 从文件加载提醒
-            
+
             # 初始化配置文件
             config_file = os.path.join(self.data_dir, "config.json")
             if not os.path.exists(config_file):
@@ -112,24 +113,24 @@ class Game(Plugin):
                 }
                 with open(config_file, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, ensure_ascii=False, indent=2)
-            
+
             # 初始化大富翁系统
             self.monopoly = MonopolySystem(self.data_dir)
-            
+
         except Exception as e:
             logger.error(f"初始化游戏系统出错: {e}")
             raise
-    
+
     def _migrate_data_files(self):
         """数据文件迁移和兼容性检查"""
         # 标准字段列表
         standard_player_fields = [
-            'user_id', 'nickname', 'gold', 'level', 'last_checkin', 
+            'user_id', 'nickname', 'gold', 'level', 'last_checkin',
             'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
             'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
             'last_item_use', 'spouse', 'marriage_proposal', 'last_attack'
         ]
-        
+
         # 默认值设置
         default_values = {
             'gold': '0',
@@ -148,7 +149,7 @@ class Game(Plugin):
             'marriage_proposal': '',
             'last_attack': '0'
         }
-        
+
         if os.path.exists(self.player_file):
             try:
                 # 读取所有现有数据
@@ -159,12 +160,12 @@ class Game(Plugin):
                         # 跳过空行或无效数据
                         if not row.get('user_id') and not row.get('nickname'):
                             continue
-                        
+
                         # 使用user_id作为主键，如果没有user_id则使用nickname
                         key = row.get('user_id') or row.get('nickname')
                         if not key:
                             continue
-                        
+
                         # 如果已存在玩家记录，合并数据
                         if key in all_players:
                             # 保留非空值
@@ -178,13 +179,13 @@ class Game(Plugin):
                                 if row.get(field):
                                     player_data[field] = row[field]
                             all_players[key] = player_data
-                            
+
                             # 确保user_id和nickname字段
                             if row.get('user_id'):
                                 player_data['user_id'] = row['user_id']
                             if row.get('nickname'):
                                 player_data['nickname'] = row['nickname']
-                
+
                 # 写入整理后的数据
                 with open(self.player_file, 'w', newline='', encoding='utf-8') as f:
                     writer = csv.DictWriter(f, fieldnames=standard_player_fields)
@@ -195,7 +196,7 @@ class Game(Plugin):
                             if field not in player_data:
                                 player_data[field] = default_values.get(field, '')
                         writer.writerow(player_data)
-                        
+
             except Exception as e:
                 logger.error(f"数据迁移出错: {e}")
                 # 创建备份
@@ -214,7 +215,7 @@ class Game(Plugin):
                 # 清理过期提醒
                 current_time = int(time.time())
                 self.reminders = {
-                    k: v for k, v in self.reminders.items() 
+                    k: v for k, v in self.reminders.items()
                     if v['expire_time'] > current_time
                 }
             except Exception as e:
@@ -235,71 +236,71 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         if len(content.split()) < 2:
             return "请使用正确的格式：提醒 内容"
-            
+
         reminder_content = ' '.join(content.split()[1:])
         # 去除感叹号和加号
         reminder_content = reminder_content.replace('!', '').replace('！', '').replace('+', '')
-        
+
         if len(reminder_content) > 50:  # 限制提醒长度
             return "提醒内容不能超过50个字符"
-            
+
         # 检查金币是否足够
         if int(player.gold) < self.REMINDER_COST:
             return f"设置提醒需要{self.REMINDER_COST}金币，金币不足"
-            
+
         # 扣除金币
         new_gold = int(player.gold) - self.REMINDER_COST
         self._update_player_data(user_id, {'gold': str(new_gold)})
-        
+
         # 保存提醒
         self.reminders[user_id] = {
             'content': reminder_content,
             'expire_time': int(time.time()) + self.REMINDER_DURATION
         }
         self._save_reminders()
-        
+
         return f"提醒设置成功！消息将在24小时内显示在每条游戏回复后面\n花费: {self.REMINDER_COST}金币"
 
     def get_active_reminders(self):
         """获取所有有效的提醒"""
         current_time = int(time.time())
         active_reminders = []
-        
+
         for user_id, reminder in self.reminders.items():
             if reminder['expire_time'] > current_time:
                 player = self.get_player(user_id)
                 if player:
                     active_reminders.append(f"[{player.nickname}]: {reminder['content']}")
-                    
+
         return "\n".join(active_reminders) if active_reminders else ""
 
     def on_handle_context(self, e_context: EventContext):
         if e_context['context'].type != ContextType.TEXT:
             return
-            
+
         # 在处理任何命令前，先检查定时任务
         self._check_scheduled_tasks()
-        
+
         content = e_context['context'].content.strip()
         msg: ChatMessage = e_context['context']['msg']
-        
+
         # 获取用户ID作为主要标识符
         current_id = msg.actual_user_id if msg.is_group else msg.from_user_id
-        
+
         # 修改这里：使用 sender 作为昵称
         nickname = msg.actual_user_nickname if msg.is_group else msg.from_user_nickname
-        
+
         if not current_id:
             return "无法获取您的ID，请确保ID已设置"
-            
+
         if not self.game_status and content not in ['注册', '开机', '关机', '定时', '查看定时', '取消定时', '清空定时']:
             return "游戏系统当前已关闭"
-            
+
         logger.debug(f"当前用户信息 - current_id: {current_id}")
-        
+
         # 修改这里：更新 lambda 函数定义，使其接受两个参数
         cmd_handlers = {
             "注册": lambda i, n: self.register_player(i, n),
@@ -312,7 +313,7 @@ class Game(Plugin):
             "装备": lambda i, n: self.equip_from_inventory(i, content),
             "游戏菜单": lambda i, n: self.game_help(),
             "赠送": lambda i, n: self.give_item(i, content, msg),
-            "钓鱼": lambda i, n: self.fishing(i),  
+            "钓鱼": lambda i, n: self.fishing(i),
             "图鉴": lambda i, n: self.show_fish_collection(i, content),
             "出售": lambda i, n: self.shop.sell_item(i, content),
             "批量出售": lambda i, n: self.shop.sell_item(i, content),
@@ -337,7 +338,7 @@ class Game(Plugin):
             "我的地产": lambda i, n: self.show_properties(i),
             "地图": lambda i, n: self.show_map(i),
         }
-        
+
         cmd = content.split()[0]
         if cmd in cmd_handlers:
             reply = cmd_handlers[cmd](current_id, nickname)
@@ -415,37 +416,35 @@ class Game(Plugin):
 系统时间: {}
 """.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
 
-
-
     def register_player(self, user_id, nickname=None):
         """注册新玩家
-        
+
         Args:
             user_id: 玩家ID
             nickname: 玩家昵称，如果未提供则使用user_id
         """
         if not user_id:
             return "无法获取您的ID，请确保ID已设置"
-        
+
         # 检查是否已注册
         if self.get_player(user_id):
             return "您已经注册过了"
-        
+
         try:
             # 如果没有提供昵称，使用user_id作为默认昵称
             if not nickname:
                 nickname = str(user_id)
-            
+
             # 创建新玩家
             player = Player.create_new(user_id, nickname)
             player.player_file = self.player_file
             player.standard_fields = self.STANDARD_FIELDS
-            
+
             # 保存玩家数据
             with open(self.player_file, 'a', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=self.STANDARD_FIELDS)
                 writer.writerow(player.to_dict())
-            
+
             return f"注册成功！"
         except Exception as e:
             logger.error(f"注册玩家出错: {e}")
@@ -469,7 +468,7 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没注册,请先注册"
-            
+
         # 检查是否有鱼竿
         inventory = player.inventory
         rod = None
@@ -477,35 +476,35 @@ class Game(Plugin):
             if item in ['木制鱼竿', '铁制鱼竿', '金制鱼竿']:
                 rod = item
                 break
-                
+
         if not rod:
             return "您需要先购买一个鱼竿才能钓鱼"
-            
+
         # 检查冷却时间
         now = datetime.datetime.now()
         last_fishing_str = player.last_fishing
-        
+
         if last_fishing_str:
             last_fishing = datetime.datetime.strptime(last_fishing_str, '%Y-%m-%d %H:%M:%S')
             cooldown = datetime.timedelta(minutes=3)  # 3分钟冷却时间
             if now - last_fishing < cooldown:
                 remaining = cooldown - (now - last_fishing)
                 return f"钓鱼冷却中，还需等待 {remaining.seconds} 秒"
-        
+
         # 调用钓鱼系统
         result = self.fishing_system.go_fishing(player, rod)
-        
+
         # 更新玩家数据
         updates = {
             'last_fishing': now.strftime('%Y-%m-%d %H:%M:%S')
         }
-        
+
         # 处理耐久度
         rod_durability = player.rod_durability
         new_durability = max(0, rod_durability.get(rod, 100) - result['durability_cost'])
         rod_durability[rod] = new_durability
         updates['rod_durability'] = json.dumps(rod_durability)
-        
+
         # 如果钓到鱼
         if result['success']:
             new_inventory = inventory + [result['fish']['name']]
@@ -516,7 +515,7 @@ class Game(Plugin):
             message = result['message']  # 使用钓鱼系返回的完整消息
         else:
             message = result['message']
-            
+
         # 处理鱼竿损坏
         if new_durability <= 0:
             inventory.remove(rod)
@@ -526,7 +525,7 @@ class Game(Plugin):
             durability_warning = f"\n⚠️警告：{rod}耐久度不足30%"
         else:
             durability_warning = ""
-            
+
         self._update_player_data(user_id, updates)
         return f"{message}{durability_warning}"
 
@@ -535,18 +534,18 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册,请先注册 "
-            
+
         # 解析命令参数
         parts = content.split()
         page = 1
         search_term = ""
-        
+
         if len(parts) > 1:
             if parts[1].isdigit():
                 page = int(parts[1])
             else:
                 search_term = parts[1]
-                
+
         return self.fishing_system.show_collection(player, page, search_term)
 
     #  外出打怪
@@ -555,53 +554,52 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         # 检查玩家状态
         if int(player.hp) <= 0:
             return "您的生命值不足，请先使用药品恢复"
-            
+
         # 检查冷却时间
         current_time = int(time.time())
         last_attack_time = int(player.last_attack)
         cooldown = 60
-        
+
         if current_time - last_attack_time < cooldown:
             remaining = cooldown - (current_time - last_attack_time)
             return f"您刚刚进行过活动,请等待 {remaining} 秒后再次外出"
 
         # 掷骰子
         steps = self.monopoly.roll_dice()
-        
+
         # 获取当前位置
         current_position = int(player.position) if hasattr(player, 'position') else 0
         new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
-        
+
         # 获取地块信息
         block = self.monopoly.get_block_info(new_position)
-        
+
         # 更新玩家位置
         self._update_player_data(user_id, {
             'position': str(new_position),
             'last_attack': str(current_time)
         })
-        
+
         result = [
             f"🎲 掷出 {steps} 点",
             f"来到了 {block['name']}"
         ]
-        
-      
+
         if block['type'] == '起点':
-            bonus = 200
+            bonus = 2000
             new_gold = int(player.gold) + bonus
             self._update_player_data(user_id, {'gold': str(new_gold)})
             result.append(f"经过起点获得 {bonus} 金币")
-            
+
         elif block['type'] == '森林':
             # 触发战斗
             battle_result = self._battle(user_id, self._generate_monster(player))
             result.append(battle_result)
-            
+
         elif block['type'] == '机遇':
             event = self.monopoly.trigger_random_event()
             if 'effect' in event:
@@ -616,7 +614,7 @@ class Game(Plugin):
                             result.append(f"💸 失去 {abs(value)} 金币")
             result.append(f"🎲 触发事件: {event['name']}")
             result.append(event['description'])
-            
+
         elif block['type'] in ['空地', '直辖市', '省会', '地级市', '县城', '乡村']:
             property_info = self.monopoly.get_property_owner(new_position)
             if property_info is None or 'owner' not in property_info:
@@ -639,11 +637,11 @@ class Game(Plugin):
                             # 扣除玩家金币
                             new_player_gold = int(player.gold) - rent
                             self._update_player_data(user_id, {'gold': str(new_player_gold)})
-                            
+
                             # 增加房主金币
                             owner_new_gold = int(owner_player.gold) + rent
                             self._update_player_data(owner, {'gold': str(owner_new_gold)})
-                            
+
                             result.append(f"这是 {owner_player.nickname} 的地盘")
                             result.append(f"区域类型: {block['region']}")
                             result.append(f"支付租金 {rent} 金币")
@@ -661,14 +659,14 @@ class Game(Plugin):
                     if property_info.get('level', 0) < 3:
                         result.append("可以发送'升级地块'进行升级")
                     print(f"[INFO] 玩家 {user_id} 访问了自己的地盘，位置: {new_position}")
-        
+
         return "\n".join(result)
 
     def _generate_monster(self, player):
         """根据玩家等级生成怪物"""
         player_level = int(player.level)
         level_factor = 1 + (player_level - 1) * 0.2
-        
+
         monsters = [
             {
                 'name': '森林史莱姆',
@@ -680,7 +678,7 @@ class Game(Plugin):
             },
             # ... 其他森林怪物
         ]
-        
+
         monster = random.choice(monsters)
         if random.random() < 0.15:  # 15%概率变异
             monster['name'] = f"变异{monster['name']}"
@@ -689,22 +687,22 @@ class Game(Plugin):
             monster['defense'] = int(monster['defense'] * 1.2)
             monster['exp'] = int(monster['exp'] * 1.5)
             monster['gold'] = int(monster['gold'] * 1.5)
-            
+
         return monster
 
     def _battle(self, user_id, monster):
         """战斗系统"""
         player = self.get_player(user_id)
-        
+
         # 获取玩家基础属性
         player_base_hp = int(player.hp)
         player_base_attack = int(player.attack)
         player_base_defense = int(player.defense)
-        
+
         # 获取装备加成
         weapon_bonus = self.equipment_system.get_weapon_bonus(player)
         armor_reduction = self.equipment_system.get_armor_reduction(player)
-        
+
         # 获取护甲提供的生命值加成
         hp_bonus = 0
         if player.equipped_armor:
@@ -712,46 +710,46 @@ class Game(Plugin):
             if player.equipped_armor in items_info:
                 armor_info = items_info[player.equipped_armor]
                 hp_bonus = int(armor_info.get('hp', 0))
-        
+
         # 计算总属性
         player_total_hp = player_base_hp + hp_bonus
         player_total_attack = player_base_attack + weapon_bonus
         player_total_defense = player_base_defense + int(armor_reduction * player_base_defense)
-        
+
         monster_hp = monster['hp']
         monster_max_hp = monster['hp']
         monster_defense = monster['defense']
-        
+
         battle_log = [f"⚔️ 遭遇了 {monster['name']}"]
         battle_log.append(f"\n你的属性:")
         battle_log.append(f"❤️ 生命值: {player_total_hp} (基础{player_base_hp} / 装备{hp_bonus})")
         battle_log.append(f"⚔️ 攻击力: {player_total_attack} (基础{player_base_attack} / 装备{weapon_bonus})")
         battle_log.append(f"🛡️ 防御力: {player_total_defense} (基础{player_base_defense} / 装备{int(armor_reduction * player_base_defense)})")
-        
+
         battle_log.append(f"\n怪物属性:")
         battle_log.append(f"❤️ 生命值: {monster['hp']}")
         battle_log.append(f"⚔️ 攻击力: {monster['attack']}")
         battle_log.append(f"🛡️ 防御力: {monster['defense']}")
-        
+
         # 怪物是否狂暴状态
         is_berserk = False
-        
+
         round_num = 1
         important_events = []
-        
+
         # 使用总生命值进行战斗
         player_hp = player_total_hp
-        
+
         while player_hp > 0 and monster_hp > 0:
             # 玩家攻击
             damage = max(1, player_total_attack - monster_defense)
             final_damage = int(damage * random.uniform(0.8, 1.2))
             monster_hp -= final_damage
-            
+
             if round_num <= 5:
                 battle_log.append(f"\n第{round_num}回合")
                 battle_log.append(f"你对{monster['name']}造成 {final_damage} 点伤害")
-            
+
             # 检查怪物是否进入狂暴状态
             if not is_berserk and monster_hp < monster_max_hp * 0.3 and random.random() < 0.4:
                 is_berserk = True
@@ -760,14 +758,14 @@ class Game(Plugin):
                     battle_log.append(f"💢 {monster['name']}进入狂暴状态！")
                 else:
                     important_events.append(f"第{round_num}回合: {monster['name']}进入狂暴状态！")
-            
+
             # 怪物反击
             if monster_hp > 0:
                 damage_multiplier = random.uniform(0.8, 1.2)
                 base_damage = max(1, monster['attack'] - player_total_defense)
                 monster_damage = int(base_damage * damage_multiplier)
                 player_hp -= monster_damage
-                
+
                 # 狂暴状态下吸血
                 if is_berserk:
                     life_steal = int(monster_damage * 0.3)
@@ -777,68 +775,68 @@ class Game(Plugin):
                 else:
                     if round_num <= 5:
                         battle_log.append(f"{monster['name']}对你造成 {monster_damage} 点伤害")
-            
+
             round_num += 1
-            
+
         if round_num > 5:
             battle_log.append(f"\n战斗持续了{round_num}回合")
             if important_events:
                 battle_log.append("重要事件:")
                 battle_log.extend(important_events)
-            
+
         if player_hp > 0:
             # 根据怪物等级增加经验值
             player_level = int(player.level)
             monster_level = int(monster['exp'] / 15) # 根据基础经验值估算怪物等级
             level_diff = monster_level - player_level
             exp_multiplier = 1.0
-            
+
             if level_diff > 0:
                 exp_multiplier = 1 + (level_diff * 0.2) # 每高一级增加20%经验
             elif level_diff < 0:
                 exp_multiplier = max(0.2, 1 + (level_diff * 0.1)) # 每低一级减少10%经验,最低20%
-                
+
             exp_gain = int(monster['exp'] * exp_multiplier)
             gold_gain = monster['gold']
-            
+
             new_exp = int(float(player.exp)) + exp_gain
             new_gold = int(player.gold) + gold_gain
             level_up = False
-            
+
             exp_needed = 100 * (1 + (int(player.level) - 1) * 0.5)
             if new_exp >= exp_needed:
                 new_level = int(player.level) + 1
                 new_exp -= exp_needed
                 level_up = True
-                
+
                 # 使用固定增长值
                 hp_increase = 50      # 每级+50血量
                 attack_increase = 15  # 每级+15攻击
                 defense_increase = 10 # 每级+10防御
-                
+
                 new_max_hp = int(player.max_hp) + hp_increase
                 new_attack = int(player.attack) + attack_increase
                 new_defense = int(player.defense) + defense_increase
-                
+
                 self._update_player_data(user_id, {
                     'level': str(new_level),
                     'max_hp': str(new_max_hp),
                     'attack': str(new_attack),
                     'defense': str(new_defense)
                 })
-            
+
             self._update_player_data(user_id, {
                 'hp': str(player_hp),
                 'exp': str(new_exp),
                 'gold': str(new_gold)
             })
-            
+
             battle_log.append(f"\n🎉 战斗胜利")
             if exp_multiplier != 1.0:
                 battle_log.append(f"经验值倍率: x{exp_multiplier:.1f}")
             battle_log.append(f"获得 {exp_gain} 经验值")
             battle_log.append(f"获得 {gold_gain} 金币")
-            
+
             if level_up:
                 battle_log.append(f"\n🆙 升级啦！当前等级 {new_level}")
                 battle_log.append("属性提升：")
@@ -849,9 +847,9 @@ class Game(Plugin):
             self._update_player_data(user_id, {'hp': '0'})
             battle_log.append(f"\n💀 战斗失败")
             battle_log.append("你被打倒了，需要使用药品恢复生命值")
-        
+
         return "\n".join(battle_log)
-    
+
     def use_item(self, user_id, content):
         """使用物品功能"""
         try:
@@ -859,7 +857,7 @@ class Game(Plugin):
             parts = content.split()
             if len(parts) < 2:
                 return "使用格式错误！请使用: 使用 物品名 [数量]"
-            
+
             item_name = parts[1]
             amount = 1  # 默认使用1个
             if len(parts) > 2:
@@ -868,42 +866,42 @@ class Game(Plugin):
                     return "使用数量必须大于0"
         except (IndexError, ValueError):
             return "使用格式错误！请使用: 使用 物品名 [数量]"
-        
+
         # 检查玩家是否存在
         player = self.get_player(user_id)
         if not player:
             return "您还没注册,请先注册 "
-        
+
         # 获取物品信息
         items = self.get_shop_items()
         if item_name not in items:
             return "没有这个物品"
-        
+
         # 检查背包中是否有足够的物品
         inventory = player.inventory  # 直接使用列表，不需要json.loads
         item_count = inventory.count(item_name)
         if item_count < amount:
             return f"背包中只有 {item_count} 个 {item_name}"
-        
+
         # 获取物品类型和效果
         item = items[item_name]
-        
+
         # 判断物品类型
         if item.get('type') != 'consumable':
             return "该物品不能直接使用"
-        
+
         # 计算恢复效果
         current_hp = int(player.hp)
         max_hp = int(player.max_hp)
         heal_amount = int(item.get('hp', 0)) * amount
-        
+
         # 计算新的生命值
         new_hp = min(current_hp + heal_amount, max_hp)
-        
+
         # 从背包中移除物品
         for _ in range(amount):
             inventory.remove(item_name)
-        
+
         # 添加物品使用冷却时间
         current_time = int(time.time())
         try:
@@ -911,35 +909,35 @@ class Game(Plugin):
         except AttributeError:
             # 如果属性不存在，则默认为0
             last_use = 0
-        
+
         if current_time - int(last_use) < 5:  # 5秒冷却时间
             return f"物品使用太频繁，请等待{5 - (current_time - int(last_use))}秒"
-        
+
         # 更新玩家数据时添加使用时间
         updates = {
             'inventory': json.dumps(inventory),
             'hp': str(new_hp),
             'last_item_use': str(current_time)
         }
-        
+
         # 如果玩家数据中没有last_item_use字段，确保它被添加到标准字段中
         if hasattr(player, 'standard_fields') and player.standard_fields and 'last_item_use' not in player.standard_fields:
             player.standard_fields.append('last_item_use')
-        
+
         player.update_data(updates)
-        
+
         return f"使用 {amount} 个 {item_name}，恢复 {new_hp - current_hp} 点生命值！\n当前生命值: {new_hp}/{max_hp}"
-    
-    
+
+
     def get_player_status(self, user_id):
         """获取玩家状态"""
         player = self.get_player(user_id)
         if not player:
             return "您还没注册,请先注册 "
-        
+
         # 获取物品信息
         items_info = self.item_system.get_all_items()
-        
+
         # 使用Player类的get_player_status方法
         return player.get_player_status(items_info)
 
@@ -951,33 +949,33 @@ class Game(Plugin):
             if not player:
                 logger.warning(f"用户 {user_id} 未注册，无法签到")
                 return "您还没注册,请先注册 "
-            
+
             import datetime
             today = datetime.datetime.now().strftime('%Y-%m-%d')
             logger.info(f"当前日期: {today}")
-            
+
             # 检查签到状态
             if player.last_checkin == today:
                 logger.info(f"用户 {user_id} 今天已经签到过了")
                 return "您今天已经签到过了"
-            
+
             # 计算奖励
-            reward = 500  # 签到奖励50金币
-            exp_reward = 50  # 签到奖励10经验
+            reward = 1000  # 签到奖励1000金币
+            exp_reward = 100  # 签到奖励100经验
             logger.info(f"用户 {user_id} 签到奖励: {reward}金币, {exp_reward}经验")
-            
+
             # 更新数据
             updates = {
                 'gold': player.gold + reward,
                 'exp': player.exp + exp_reward,
                 'last_checkin': today
             }
-            
+
             self._update_player_data(user_id, updates)
             logger.info(f"用户 {user_id} 数据更新成功: {updates}")
-            
+
             return f"签到成功 获得{reward}金币，经验{exp_reward}，当前金币: {player.gold + reward}"
-            
+
         except Exception as e:
             logger.error(f"用户 {user_id} 签到出错: {e}")
             return f"签到失败: {str(e)}"
@@ -991,11 +989,11 @@ class Game(Plugin):
         parts = content.split()
         if len(parts) < 4:
             return "格式错误！请使用: 赠送 @用户 物品名 数量"
-        
+
         # 获取被赠送者ID
         if not msg.is_group:
             return "只能在群聊中使用赠送功能"
-        
+
         target_id = None
         # 解析@后面的用户名
         for part in parts:
@@ -1018,7 +1016,7 @@ class Game(Plugin):
         remaining_parts = [p for p in parts[1:] if not p.startswith('@')]
         if len(remaining_parts) < 2:
             return "请指定物品名称和数量"
-        
+
         item_name = remaining_parts[0]
         try:
             amount = int(remaining_parts[1])
@@ -1026,40 +1024,40 @@ class Game(Plugin):
                 return "赠送数量必须大于0"
         except (IndexError, ValueError):
             return "请正确指定赠送数量"
-        
+
         # 检查双方是否都已注册
         sender = self.get_player(user_id)
         if not sender:
             return "您还没注册,请先注册"
-        
+
         receiver = self.get_player(target_id)
         if not receiver:
             return "对方还没有注册游戏"
-        
+
         # 检查发送者是否拥有足够的物品
         sender_inventory = sender.inventory
         equipped_count = 0
-        
+
         # 检查是否是装备中的物品
         if item_name == sender.equipped_weapon or item_name == sender.equipped_armor:
             equipped_count = 1
-        
+
         # 计算可赠送数量（排除装备的物品）
         available_count = sender_inventory.count(item_name) - equipped_count
-        
+
         if available_count < amount:
             if equipped_count > 0:
                 return f"背包中只有 {available_count} 个未装备的 {item_name}，无法赠送 {amount} 个"
             else:
                 return f"背包中只有 {available_count} 个 {item_name}"
-        
+
         # 更新双方的背包
         for _ in range(amount):
             sender_inventory.remove(item_name)
-        
+
         receiver_inventory = receiver.inventory
         receiver_inventory.extend([item_name] * amount)
-        
+
         # 保存更新
         self._update_player_data(user_id, {
             'inventory': sender_inventory
@@ -1067,7 +1065,7 @@ class Game(Plugin):
         self._update_player_data(target_id, {
             'inventory': receiver_inventory
         })
-        
+
         return f"成功将 {amount} 个 {item_name} 赠送给了 {receiver.nickname}"
 
     def show_leaderboard(self, user_id, content):
@@ -1077,19 +1075,19 @@ class Game(Plugin):
             board_type = "金币"
             if content and len(content.split()) > 1:
                 board_type = content.split()[1]
-            
+
             if board_type not in ["金币", "等级"]:
                 return "目前支持的排行榜类型：金币、等级"
-            
+
             # 读取所有玩家数据
             players = []
             with open(self.player_file, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 players = list(reader)
-            
+
             if not players:
                 return "暂无玩家数据"
-            
+
             # 安全的数值转换函数
             def safe_int(value, default=0):
                 try:
@@ -1097,7 +1095,7 @@ class Game(Plugin):
                     return int(float(str(value).replace(',', '')))
                 except (ValueError, TypeError):
                     return default
-            
+
             # 根据类型排序
             if board_type == "金币":
                 players.sort(key=lambda x: safe_int(x.get('gold', 0)), reverse=True)
@@ -1108,32 +1106,32 @@ class Game(Plugin):
                 # 使用元组排序，先按等级后按经验
                 players.sort(
                     key=lambda x: (
-                        safe_int(x.get('level', 1)), 
+                        safe_int(x.get('level', 1)),
                         safe_int(x.get('exp', 0))
-                    ), 
+                    ),
                     reverse=True
                 )
                 title = "等级排行榜"
                 value_key = 'level'
                 suffix = "级"
-            
+
             # 生成排行榜
             result = f"{title}:\n"
             result += "-" * 30 + "\n"
-            
+
             # 只显示前10名
             for i, player in enumerate(players[:10], 1):
                 nickname = player['nickname']
                 value = safe_int(player[value_key])
-                
+
                 # 为等级排行榜添加经验值显示
                 exp_info = f" (经验: {safe_int(player.get('exp', '0'))})" if board_type == "等级" else ""
-                
+
                 # 添加排名
                 rank_mark = "👑" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                
+
                 result += f"{rank_mark} {nickname}: {value}{suffix}{exp_info}\n"
-            
+
             # 如果当前用户不在前10名，显示其排名
             current_player = next((p for p in players if p['nickname'] == user_id), None)
             if current_player:
@@ -1143,9 +1141,9 @@ class Game(Plugin):
                     value = current_player[value_key]
                     exp_info = f" (经验: {safe_int(current_player.get('exp', '0'))})" if board_type == "等级" else ""
                     result += f"你的排名: {current_rank}. {current_player['nickname']}: {value}{suffix}{exp_info}"
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"显示排行榜出错: {e}")
             return "显示排行榜时发生错误"
@@ -1154,40 +1152,40 @@ class Game(Plugin):
         """求婚"""
         if not msg.is_group:
             return "只能在群聊中使用求婚功能"
-        
+
         # 获取求婚者信息
         proposer = self.get_player(user_id)
         if not proposer:
             return "您还没有注册游戏"
-        
+
         # 解析命令参数
         parts = content.split()
         logger.info(f"求婚命令参数: {parts}")
         if len(parts) < 2 or not parts[1].startswith('@'):
             return "请使用正确的格式：求婚 @用户名"
-      
+
         target_name = parts[1][1:]  # 去掉@符号
         # 根据昵称获取玩家
         target = Player.get_player_by_nickname(target_name, self.player_file)
         if not target:
             return "找不到目标玩家，请确保输入了正确的用户名"
-        
+
         if target.user_id == user_id:  # 使用user_id比较
             return "不能向自己求婚"
-        
+
         # 检查是否已经是配偶
         proposer_spouses = proposer.spouse.split(',') if proposer.spouse else []
         if target.user_id in [s for s in proposer_spouses if s]:
             return "你们已经是夫妻了"
-        
+
         if target.marriage_proposal:
             return "对方已经有一个待处理的求婚请求"
-        
+
         # 更新目标玩家的求婚请求，使用求婚者的user_id
         self._update_player_data(target.user_id, {  # 修改：使用target.user_id而不是target.nickname
             'marriage_proposal': user_id  # 存储求婚者的user_id
         })
-        
+
         return f"您向 {target_name} 发起了求婚请求，等待对方回应"
 
     def accept_marriage(self, user_id):
@@ -1195,11 +1193,11 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-        
+
         proposal = player.marriage_proposal
         if not proposal:
             return "您没有待处理的求婚请求"
-        
+
         # 使用昵称获取求婚者信息
         proposer = self.get_player(proposal)
         if not proposer:
@@ -1208,19 +1206,19 @@ class Game(Plugin):
                 'marriage_proposal': ''
             })
             return "求婚者信息不存在或已注销账号"
-        
+
         # 获取现有配偶列表
         current_spouses = player.spouse.split(',') if player.spouse else []
         proposer_spouses = proposer.spouse.split(',') if proposer.spouse else []
-        
+
         # 过滤掉空字符串
         current_spouses = [s for s in current_spouses if s]
         proposer_spouses = [s for s in proposer_spouses if s]
-        
+
         # 添加新配偶
         current_spouses.append(proposer.nickname)
         proposer_spouses.append(player.nickname)
-        
+
         # 更新双方的婚姻状态，使用user_id而不是nickname
         self._update_player_data(user_id, {
             'spouse': ','.join(current_spouses),
@@ -1229,7 +1227,7 @@ class Game(Plugin):
         self._update_player_data(proposer.user_id, {
             'spouse': ','.join(proposer_spouses)
         })
-        
+
         return f"恭喜！您接受了 {proposer.nickname} 的求婚！现在你们是夫妻了！"
 
     def reject_marriage(self, user_id):
@@ -1237,16 +1235,16 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-        
+
         proposal = player.marriage_proposal
         if not proposal:
             return "您没有待处理的求婚请求"
-        
+
         # 清除求婚请求
         self._update_player_data(user_id, {
             'marriage_proposal': ''
         })
-        
+
         return f"您拒绝了 {proposal} 的求婚请求"
 
     def divorce(self, user_id):
@@ -1254,12 +1252,12 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-        
+
         # 获取所有配偶
         spouses = player.spouse.split(',') if player.spouse else []
         if not spouses:
             return "您还没有结婚"
-            
+
         # 解除与所有配偶的婚姻关系
         for spouse_name in spouses:
             if spouse_name:
@@ -1271,61 +1269,61 @@ class Game(Plugin):
                     self._update_player_data(spouse_name, {
                         'spouse': ','.join(spouse_list)
                     })
-        
+
         # 清空玩家的婚姻状态
         self._update_player_data(user_id, {
             'spouse': ''
         })
-        
+
         return f"您已经与所有配偶离婚"
 
     def attack_player(self, user_id, content, msg: ChatMessage):
         """强制攻击其他玩家"""
         if not msg.is_group:
             return "只能在群聊中使用攻击功能"
-        
+
         # 获取物品信息
         items_info = self.item_system.get_all_items()  # 添加这行来获取物品信息
-        
+
         # 解析命令参数
         parts = content.split()
         if len(parts) < 2 or not parts[1].startswith('@'):
             return "请使用正确的格式：攻击 @用户名"
-        
+
         target_name = parts[1][1:]  # 去掉@符号
         # 根据昵称获取玩家
         target = Player.get_player_by_nickname(target_name, self.player_file)
         if not target:
             return "找不到目标玩家，请确保输入了正确的用户名"
-            
+
         # 获取攻击者信息
         attacker = self.get_player(user_id)
         if not attacker:
             return "您还没有注册游戏"
-        
+
         # 不能攻击自己
         if attacker.nickname == target.nickname:
             return "不能攻击自己"
-        
+
         # 检查冷却时间
         import time
         current_time = int(time.time())
         last_attack = int(attacker.last_attack)
         cooldown = 300  # 5分钟冷却
-        
-        if current_time - last_attack < cooldown:
+
+        if (current_time - last_attack) < cooldown:
             remaining = cooldown - (current_time - last_attack)
             return f"攻击冷却中，还需等待 {remaining} 秒"
-        
+
         # 获取双方属性
         attacker_hp = int(attacker.hp)
         attacker_attack = int(attacker.attack)
         attacker_defense = int(attacker.defense)
-        
+
         target_hp = int(target.hp)
         target_attack = int(target.attack)
         target_defense = int(target.defense)
-        
+
         # 获取双方配偶信息
         attacker_spouses = []
         if attacker.spouse:
@@ -1334,7 +1332,7 @@ class Game(Plugin):
                     spouse = self.get_player(spouse_name)
                     if spouse:
                         attacker_spouses.append(spouse)
-                        
+
         target_spouses = []
         if target.spouse:
             for spouse_name in target.spouse.split(','):
@@ -1342,37 +1340,37 @@ class Game(Plugin):
                     spouse = self.get_player(spouse_name)
                     if spouse:
                         target_spouses.append(spouse)
-        
+
         # 获取装备加成
         attacker_weapon_bonus = self.equipment_system.get_weapon_bonus(attacker)
         attacker_armor_bonus = self.equipment_system.get_armor_reduction(attacker)
         target_weapon_bonus = self.equipment_system.get_weapon_bonus(target)
         target_armor_bonus = self.equipment_system.get_armor_reduction(target)
-        
+
         # 获取护甲提供的生命值加成
         attacker_hp_bonus = 0
         target_hp_bonus = 0
-        
+
         # 计算攻击者护甲生命值加成
         if attacker.equipped_armor and attacker.equipped_armor in items_info:
             armor_info = items_info[attacker.equipped_armor]
             attacker_hp_bonus = int(armor_info.get('hp', 0))
-        
+
         # 计算目标护甲生命值加成
         if target.equipped_armor and target.equipped_armor in items_info:
             target_armor_info = items_info[target.equipped_armor]
             target_hp_bonus = int(target_armor_info.get('hp', 0))
-        
+
         # 计算实际生命值
         attacker_total_hp = attacker_hp + attacker_hp_bonus
         target_total_hp = target_hp + target_hp_bonus
-        
+
         # 计算总攻击力和防御力
         attacker_total_attack = attacker_attack + attacker_weapon_bonus
         attacker_total_defense = attacker_defense + int(attacker_armor_bonus * attacker_defense)
         target_total_attack = target_attack + target_weapon_bonus
         target_total_defense = target_defense + int(target_armor_bonus * target_defense)
-        
+
         # 更新战斗日志显示
         battle_log = [
             "⚔️ PVP战斗开始 ⚔️\n",
@@ -1386,11 +1384,11 @@ class Game(Plugin):
             f"⚔️ 攻击力: {target_total_attack} (基础{target_attack} / 装备{target_weapon_bonus})",
             f"🛡️ 防御力: {target_total_defense} (基础{target_defense} / 装备{int(target_armor_bonus * target_defense)})\n"
         ]
-        
+
         # 战斗逻辑中使用总生命值
         attacker_hp = attacker_total_hp
         target_hp = target_total_hp
-        
+
         # 战斗逻辑
         round_num = 1
         while attacker_hp > 0 and target_hp > 0:
@@ -1398,42 +1396,42 @@ class Game(Plugin):
             base_damage = max(1, attacker_total_attack - target_total_defense)  # 已经包含了装备加成
             damage = int(base_damage * random.uniform(0.8, 1.2))  # 只添加随机波动
             target_hp -= damage
-            
+
             if round_num <= 5:
                 battle_log.append(f"\n第{round_num}回合")
                 battle_log.append(f"{attacker.nickname}对{target.nickname}造成 {damage} 点伤害")
-            
+
             # 目标反击
             if target_hp > 0:
                 base_damage = max(1, target_total_attack - attacker_total_defense)  # 已经包含了装备加成
                 damage = int(base_damage * random.uniform(0.8, 1.2))  # 只添加随机波动
                 attacker_hp -= damage
-                
+
                 if round_num <= 5:
                     battle_log.append(f"{target.nickname}对{attacker.nickname}造成 {damage} 点伤害")
-            
+
             round_num += 1
             if round_num > 10:  # 限制最大回合数
                 break
-        
+
         # 计算惩罚金币比例(回合数越多惩罚越少)
         penalty_rate = max(0.2, 0.6 - (round_num - 1) * 0.05)  # 每回合减少5%,最低20%
         battle_log.append("\n战斗结果:")
-        
+
         if attacker_hp <= 0:  # 攻击者失败
             # 扣除金币
             attacker_gold = int(attacker.gold)
             penalty_gold = int(attacker_gold * penalty_rate)
             new_attacker_gold = attacker_gold - penalty_gold
             new_target_gold = int(target.gold) + penalty_gold
-            
+
             # 随机丢失物品
             attacker_items = attacker.inventory  # 直接使用inventory列表
             lost_item = None
             if attacker_items:
                 lost_item = random.choice(attacker_items)
                 attacker_items.remove(lost_item)
-            
+
             # 更新数据
             self._update_player_data(user_id, {
                 'hp': str(attacker_hp),
@@ -1446,25 +1444,25 @@ class Game(Plugin):
                 'gold': str(new_target_gold),
                 'inventory': target.inventory,  # _update_player_data会处理列表到JSON的转换
             })
-            
+
             result = f"{target.nickname} 获胜!\n{attacker.nickname} 赔偿 {penalty_gold} 金币"
             if lost_item:
                 result += f"\n{attacker.nickname} 丢失了 {lost_item}"
-            
+
         else:  # 攻击者胜利
             # 扣除金币
             target_gold = int(target.gold)
             penalty_gold = int(target_gold * penalty_rate)
             new_target_gold = target_gold - penalty_gold
             new_attacker_gold = int(attacker.gold) + penalty_gold
-            
+
             # 随机丢失物品
             target_items = target.inventory  # 直接使用inventory列表
             lost_item = None
             if target_items:
                 lost_item = random.choice(target_items)
                 target_items.remove(lost_item)
-            
+
             # 更新数据
             self._update_player_data(target.user_id, {  # 使用target_id而不是nickname
                 'hp': str(target_hp),
@@ -1476,17 +1474,17 @@ class Game(Plugin):
                 'gold': str(new_attacker_gold),
                 'last_attack': str(current_time)
             })
-            
+
             result = f"{attacker.nickname} 获胜!\n{target.nickname} 赔偿 {penalty_gold} 金币"
             if lost_item:
                 result += f"\n{target.nickname} 丢失了 {lost_item}"
-        
+
         battle_log.append(result)
         return "\n".join(battle_log)
 
     def _update_player_data(self, user_id, updates: dict):
         """更新玩家数据
-        
+
         Args:
             user_id: 玩家ID
             updates: 需要更新的字段和值的字典
@@ -1497,21 +1495,21 @@ class Game(Plugin):
             if not player:
                 logger.error(f"找不到玩家: {user_id}")
                 raise ValueError(f"找不到玩家: {user_id}")
-                
+
             # 设置必要的文件信息
             player.player_file = self.player_file
             player.standard_fields = self.STANDARD_FIELDS
-            
+
             # 数据类型转换和验证
             for key, value in updates.items():
                 if isinstance(value, (int, float)):
                     updates[key] = str(value)
                 elif isinstance(value, (list, dict)):
                     updates[key] = json.dumps(value)
-                    
+
             # 使用Player类的update_data方法
             player.update_data(updates)
-            
+
         except Exception as e:
             logger.error(f"更新玩家数据出错: {e}")
             raise
@@ -1520,25 +1518,25 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没注册..."
-            
+
         items_info = self.item_system.get_all_items()
         return player.get_inventory_display(items_info)
 
     def equip_item(self, user_id: str, item_name: str) -> str:
         """装备物品的包装方法"""
         return self.equipment_system.equip_item(user_id, item_name)
-    
+
     def unequip_item(self, user_id: str, item_type: str) -> str:
         """卸下装备的包装方法"""
         return self.equipment_system.unequip_item(user_id, item_type)
 
     def equip_from_inventory(self, user_id: str, content: str) -> str:
         """从背包装备物品
-        
+
         Args:
             user_id: 玩家ID
             content: 完整的命令内容
-            
+
         Returns:
             str: 装备结果提示
         """
@@ -1547,12 +1545,12 @@ class Game(Plugin):
             parts = content.split()
             if len(parts) < 2:
                 return "装备格式错误！请使用: 装备 物品名"
-                
+
             item_name = parts[1]
-            
+
             # 调用装备系统的装备方法
             return self.equipment_system.equip_item(user_id, item_name)
-            
+
         except Exception as e:
             logger.error(f"装备物品出错: {e}")
             return "装备物品时发生错误"
@@ -1565,7 +1563,7 @@ class Game(Plugin):
                     data = json.load(f)
                     self.game_status = data.get('game_status', True)
                     self.scheduled_tasks = data.get('scheduled_tasks', {})
-                    
+
                     # 恢复定时任务
                     current_time = time.time()
                     for task_id, task in list(self.scheduled_tasks.items()):
@@ -1577,7 +1575,7 @@ class Game(Plugin):
                                 self.game_status = False
                             # 删除已执行的任务
                             del self.scheduled_tasks[task_id]
-                    
+
                     # 保存更新后的状态
                     self._save_game_state()
         except Exception as e:
@@ -1594,9 +1592,9 @@ class Game(Plugin):
                 clean_task_id = task_id.split(',')[0]
                 if clean_task_id not in cleaned_tasks:  # 避免重复任务
                     cleaned_tasks[clean_task_id] = task
-            
+
             self.scheduled_tasks = cleaned_tasks
-            
+
             with open(self.process_lock_file, 'w') as f:
                 json.dump({
                     'game_status': self.game_status,
@@ -1621,14 +1619,14 @@ class Game(Plugin):
                     return "您还没有注册游戏"
             elif not self._is_admin(player):
                 return "只有管理员才能操作游戏系统开关"
-            
+
             if action == 'toggle':
                 self.game_status = not self.game_status
             elif action == 'start':
                 self.game_status = True
             elif action == 'stop':
                 self.game_status = False
-            
+
             self._save_game_state()
             return f"游戏系统已{'开启' if self.game_status else '关闭'}"
         except Exception as e:
@@ -1640,21 +1638,21 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         # 检查是否是管理员
         if not self._is_admin(player):
             return "只有管理员才能设置定时任务"
-        
+
         try:
             # 解析命令格式: 定时 开机/关机 HH:MM [每天]
             parts = content.split()
             if len(parts) < 3:
                 return "格式错误！请使用: 定时 开机/关机 HH:MM [每天]"
-                
+
             action = '开机' if parts[1] == '开机' else '关机' if parts[1] == '关机' else None
             if not action:
                 return "请指定正确的操作(开机/关机)"
-                
+
             # 解析时间
             try:
                 hour, minute = map(int, parts[2].split(':'))
@@ -1662,30 +1660,30 @@ class Game(Plugin):
                     raise ValueError
             except ValueError:
                 return "请输入正确的时间格式(HH:MM)"
-                
+
             # 检查是否是每天执行
             is_daily = len(parts) > 3 and parts[3] == '每天'
-            
+
             # 计算执行时间
             now = datetime.datetime.now()
             target_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             if not is_daily and target_time <= now:
                 target_time += datetime.timedelta(days=1)
-                
+
             # 生成任务ID，每天任务添加daily标记
             task_id = f"{'daily' if is_daily else ''}{action}_{target_time.strftime('%H%M')}"
-            
+
             # 添加定时任务
             self.scheduled_tasks[task_id] = {
                 'action': 'start' if action == '开机' else 'stop',
                 'time': target_time.timestamp(),
                 'is_daily': is_daily
             }
-            
+
             self._save_game_state()
             daily_text = "每天 " if is_daily else ""
             return f"已设置{daily_text}{action}定时任务: {target_time.strftime('%H:%M')}"
-            
+
         except Exception as e:
             logger.error(f"设置定时任务出错: {e}")
             return "设置定时任务失败"
@@ -1701,11 +1699,11 @@ class Game(Plugin):
                 }
                 with open(config_file, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, ensure_ascii=False, indent=2)
-            
+
             # 读取配置文件
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            
+
             return player.nickname in config.get("admins", [])
         except Exception as e:
             logger.error(f"读取管理员配置出错: {e}")
@@ -1716,38 +1714,38 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         if not self._is_admin(player):
             return "只有管理员才能查看定时任务"
-        
+
         if not self.scheduled_tasks:
             return "当前没有定时任务"
-        
+
         # 用于去重和整理任务的字典
         unique_tasks = {}
-        
+
         result = "定时任务列表:\n" + "-" * 20 + "\n"
         for task_id, task in self.scheduled_tasks.items():
             # 清理掉可能包含的receiver信息
             clean_task_id = task_id.split(',')[0]
-            
+
             action = "开机" if task['action'] == 'start' else "关机"
             time_str = datetime.datetime.fromtimestamp(task['time']).strftime('%H:%M')
-            
+
             # 使用间和动作作为唯一键
             task_key = f"{time_str}_{action}"
-            
+
             if task.get('is_daily'):
                 task_desc = f"每天 {time_str}"
             else:
                 task_desc = datetime.datetime.fromtimestamp(task['time']).strftime('%Y-%m-%d %H:%M')
-                
+
             unique_tasks[task_key] = f"{action}: {task_desc}"
-        
+
         # 按时间排序显示任务
         for task_desc in sorted(unique_tasks.values()):
             result += f"{task_desc}\n"
-        
+
         return result
 
     def cancel_scheduled_task(self, user_id, content):
@@ -1755,20 +1753,20 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         if not self._is_admin(player):
             return "只有管理员才能取消定时任务"
-        
+
         try:
             # 解析命令格式: 取消定时 开机/关机 HH:MM
             parts = content.split()
             if len(parts) != 3:
                 return "格式错误！请使用: 取消定时 开机/关机 HH:MM"
-                
+
             action = '开机' if parts[1] == '开机' else '关机' if parts[1] == '关机' else None
             if not action:
                 return "请指定正确的操作(开机/���机)"
-                
+
             # 解析时间
             try:
                 hour, minute = map(int, parts[2].split(':'))
@@ -1776,15 +1774,15 @@ class Game(Plugin):
                     raise ValueError
             except ValueError:
                 return "请输入正确的时间格式(HH:MM)"
-                
+
             # 生成任务ID格式
             now = datetime.datetime.now()
             target_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             if target_time <= now:
                 target_time += datetime.timedelta(days=1)
-                
+
             task_id = f"{action}_{target_time.strftime('%Y%m%d%H%M')}"
-            
+
             # 检查并删除任务
             if task_id in self.scheduled_tasks:
                 del self.scheduled_tasks[task_id]
@@ -1792,7 +1790,7 @@ class Game(Plugin):
                 return f"已取消{action}定时任务: {target_time.strftime('%Y-%m-%d %H:%M')}"
             else:
                 return f"未找到指定的定时任务"
-            
+
         except Exception as e:
             logger.error(f"取消定时任务出错: {e}")
             return "取消定时任务失败"
@@ -1802,7 +1800,7 @@ class Game(Plugin):
         try:
             current_time = time.time()
             tasks_to_remove = []
-            
+
             for task_id, task in self.scheduled_tasks.items():
                 if task['time'] <= current_time:
                     # 执行定时任务
@@ -1812,7 +1810,7 @@ class Game(Plugin):
                     elif task['action'] == 'stop':
                         self.game_status = False
                         logger.info(f"定时任务执行：关机 - {datetime.datetime.fromtimestamp(task['time']).strftime('%Y-%m-%d %H:%M')}")
-                    
+
                     if task.get('is_daily'):
                         # 更新每日任务的下一次执行时间
                         next_time = datetime.datetime.fromtimestamp(task['time']) + datetime.timedelta(days=1)
@@ -1820,15 +1818,15 @@ class Game(Plugin):
                     else:
                         # 将非每日任务添加到待删除列表
                         tasks_to_remove.append(task_id)
-            
+
             # 删除已执行的非每日任务
             for task_id in tasks_to_remove:
                 del self.scheduled_tasks[task_id]
-                
+
             # 如果有任务被执行或更新，保存状态
             if tasks_to_remove or any(task.get('is_daily') for task in self.scheduled_tasks.values()):
                 self._save_game_state()
-            
+
         except Exception as e:
             logger.error(f"检查定时任务出错: {e}")
 
@@ -1837,19 +1835,19 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         if not self._is_admin(player):
             return "只有管理员才能清空定时任务"
-        
+
         try:
             task_count = len(self.scheduled_tasks)
             if task_count == 0:
                 return "当前没有定时任务"
-                
+
             self.scheduled_tasks.clear()
             self._save_game_state()
             return f"已清空 {task_count} 个定时任务"
-            
+
         except Exception as e:
             logger.error(f"清空定时任务出错: {e}")
             return "清空定时任务失败"
@@ -1859,14 +1857,14 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         if user_id not in self.reminders:
             return "您没有设置任何提醒"
-            
+
         # 删除提醒
         del self.reminders[user_id]
         self._save_reminders()
-        
+
         return "提醒已删除"
 
     def buy_property(self, user_id):
@@ -1874,20 +1872,20 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         # 获取玩家当前位置
         current_position = int(getattr(player, 'position', 0))
         block = self.monopoly.get_block_info(current_position)
-        
+
         # 检查是否是可购买的地块
         purchasable_types = ['空地', '直辖市', '省会', '地级市', '县城', '乡村']
         if block['type'] not in purchasable_types:
             return "当前位置不是可购买的地块"
-            
+
         # 检查是否已被购买
         if self.monopoly.get_property_owner(current_position):
             return "这块地已经被购买了"
-            
+
         # 计算地块价格
         base_prices = {
             '直辖市': 2000,
@@ -1900,11 +1898,11 @@ class Game(Plugin):
         base_price = base_prices.get(block['type'], 500)
         distance_factor = 1 + (current_position // 10) * 0.2  # 每10格增加20%价格
         price = int(base_price * distance_factor)
-        
+
         # 检查玩家金币是否足够
         if int(player.gold) < price:
             return f"购买这块地需要 {price} 金币，您的金币不足"
-            
+
         # 扣除金币并购买地块
         new_gold = int(player.gold) - price
         if self.monopoly.buy_property(current_position, user_id, price):
@@ -1922,28 +1920,28 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         # 获取玩家当前位置
         current_position = int(getattr(player, 'position', 0))
-        
+
         # 检查是否是玩家的地产
         property_data = self.monopoly.properties_data.get(str(current_position))
         if not property_data or property_data.get('owner') != user_id:
             return "这不是您的地产"
-            
+
         # 检查是否达到最高等级
         current_level = property_data.get('level', 1)
         if current_level >= 3:
             return "地产已达到最高等级"
-            
+
         # 计算升级费用
         base_price = property_data.get('price', 500)
         upgrade_cost = int(base_price * 0.5 * current_level)
-        
+
         # 检查玩家金币是否足够
         if int(player.gold) < upgrade_cost:
             return f"升级需要 {upgrade_cost} 金币，您的金币不足"
-            
+
         # 扣除金币并升级地产
         new_gold = int(player.gold) - upgrade_cost
         if self.monopoly.upgrade_property(current_position):
@@ -1961,11 +1959,11 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         properties = self.monopoly.get_player_properties(user_id)
         if not properties:
             return "您还没有购买任何地产"
-            
+
         result = ["您的地产列表："]
         for pos in properties:
             prop_info = self.monopoly.get_property_info(pos)
@@ -1974,7 +1972,7 @@ class Game(Plugin):
                 result.append(f"等级: {prop_info['level']}")
                 result.append(f"价值: {prop_info['price']} 金币")
                 result.append(f"当前租金: {prop_info['rent']} 金币")
-                
+
         return "\n".join(result)
 
     def show_map(self, user_id):
@@ -1982,13 +1980,13 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
-            
+
         # 获取玩家当前位置
         current_position = int(getattr(player, 'position', 0))
-        
+
         # 获取地图总格子数
         total_blocks = self.monopoly.map_data["total_blocks"]
-        
+
         result = ["🗺️ 大富翁地图"]
         result.append("————————————")
 
@@ -1997,7 +1995,7 @@ class Game(Plugin):
             block = self.monopoly.get_block_info(pos)
             property_data = self.monopoly.properties_data.get(str(pos), {})
             owner_id = property_data.get('owner')
-            
+
             # 获取地块显示符号
             if pos == current_position:
                 symbol = "👤"  # 玩家当前位置
@@ -2019,7 +2017,7 @@ class Game(Plugin):
                     "空地": "⬜"
                 }
                 symbol = type_symbols.get(block['type'], "⬜")
-                
+
             # 添加地块信息
             block_info = f"{symbol} {pos}:{block['name']}"
             if owner_id:
@@ -2028,14 +2026,14 @@ class Game(Plugin):
                     block_info += f"({owner_player.nickname})"
                 else:
                     block_info += f"(未知)"
-                
+
             if pos == current_position:
                 block_info += " ← 当前位置"
-                
+
             result.append(block_info)
-            
+
             # 每5个地块换行
             if (pos + 1) % 5 == 0:
                 result.append("————————————")
-                
+
         return "\n".join(result)

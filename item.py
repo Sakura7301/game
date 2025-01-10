@@ -4,13 +4,14 @@ from typing import Dict, Any, Optional
 from common.log import logger
 import os
 
+
 class Item:
     """物品类,用于管理物品属性和操作"""
-    
+
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
         self.item_file = f"{data_dir}/items.csv"
-        
+
     def get_all_items(self) -> Dict[str, Dict[str, Any]]:
         """获取所有物品信息"""
         items_info = {}
@@ -24,7 +25,7 @@ class Item:
         except Exception as e:
             logger.error(f"读取物品数据出错: {e}")
             return {}
-            
+
     def init_default_items(self):
         """初始化默认物品数据"""
         if not os.path.exists(self.item_file):
@@ -56,7 +57,7 @@ class Item:
                     ['金制鱼竿', '稀有的金制鱼竿', 'fishing_rod', '0', '3', '0', '1000', '3']
                 ]
                 writer.writerows(default_items)
-                
+
                 # 写入鱼类数据
                 fish_data = [
                     ['小鱼', '一条小鱼', 'fish', '0', '0', '0', '12', '1'],
@@ -64,7 +65,7 @@ class Item:
                     # ... 其他鱼类数据 ...
                 ]
                 writer.writerows(fish_data)
-            
+
     def get_shop_items(self) -> Dict[str, Dict[str, Any]]:
         """获取商店物品信息"""
         items = {}
