@@ -34,7 +34,7 @@ class Game(Plugin):
         'user_id', 'nickname', 'gold', 'level', 'last_checkin',
         'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
         'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
-        'last_item_use', 'spouse', 'marriage_proposal', 'last_attack',
+        'last_item_use', 'spouse', 'marriage_proposal', 'last_attack', 'adventure_last_attack',
         'position'
     ]
 
@@ -155,7 +155,7 @@ class Game(Plugin):
             'user_id', 'nickname', 'gold', 'level', 'last_checkin',
             'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
             'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
-            'last_item_use', 'spouse', 'marriage_proposal', 'last_attack'
+            'last_item_use', 'spouse', 'marriage_proposal', 'last_attack', 'adventure_last_attack'
         ]
 
         # 默认值设置
@@ -174,7 +174,8 @@ class Game(Plugin):
             'last_item_use': '0',
             'spouse': '',
             'marriage_proposal': '',
-            'last_attack': '0'
+            'last_attack': '0',
+            'adventure_last_attack': '0'
         }
 
         if os.path.exists(self.player_file):
@@ -685,17 +686,22 @@ class Game(Plugin):
 
         # 检查冷却时间（冒险cd: 10s）
         current_time = int(time.time())
-        adventure_last_attack_time = int(player.adventure_last_attack_time)
+        adventure_last_attack = player.adventure_last_attack
         cooldown = 10
 
         # 检查冷却时间
-        if current_time - adventure_last_attack_time < cooldown:
-            remaining = cooldown - (current_time - adventure_last_attack_time)
+        if current_time - adventure_last_attack < cooldown:
+            remaining = cooldown - (current_time - adventure_last_attack)
             return f"您刚刚进行过冒险活动,请等待 {remaining} 秒后再次进行冒险"
 
         # 检查玩家状态
         if int(player.hp) <= 0:
             return "您的生命值不足，请先使用药品恢复"
+
+        # 更新玩家冒险计时
+        self._update_player_data(user_id, {
+            'adventure_last_attack': str(current_time)
+        })
 
         # 掷骰子
         steps = self.monopoly.roll_dice()

@@ -18,7 +18,6 @@ class Player:
         self.data = data
         self.player_file = player_file
         self.standard_fields = standard_fields
-        self.adventure_last_attack_time = int(time.time())
 
         # 清理耐久度为0的记录
         if 'rod_durability' in self.data:
@@ -150,6 +149,14 @@ class Player:
         self.data['last_attack'] = str(value)
 
     @property
+    def adventure_last_attack(self) -> int:
+        return int(self.data.get('adventure_last_attack', 0))
+
+    @adventure_last_attack.setter
+    def adventure_last_attack(self, value: int):
+        self.data['adventure_last_attack'] = str(value)
+
+    @property
     def last_checkin(self) -> str:
         return self.data.get('last_checkin', '')
 
@@ -266,6 +273,7 @@ class Player:
             'spouse': '',
             'marriage_proposal': '',
             'last_attack': '0',
+            'adventure_last_attack': '0',
             'position': '0'
         }
         return cls(data)

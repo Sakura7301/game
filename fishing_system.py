@@ -86,15 +86,16 @@ class FishingSystem:
 
             stars = "⭐" * int(caught_fish.get('rarity', '1'))
             message = f"{random.choice(fishing_messages)}\n"
-            message += f"━━━━━━━━━━━━━━━\n"
+            message += f"━━━━━━━━━━━━━\n"
             message += f"🎣 你钓到了 {caught_fish['name']}\n"
+            message += f"      \"{caught_fish['desc']}\"\n"
             message += f"📊 稀有度: {stars}\n"
             message += f"💰 基础价值: {caught_fish.get('price', '0')}金币\n"
             message += f"🎯 鱼竿加成: x{rod_bonus} ({rod})\n"
             message += f"🪙 金币奖励: {coins_reward}金币\n"
             message += f"⚡ 耐久消耗: -{durability_cost} ({remaining_durability}/100)\n"
             message += f"🎲 当前幸运值: {base_chance*100:.0f}%\n"
-            message += f"━━━━━━━━━━━━━━━"
+            message += f"━━━━━━━━━━━━━"
 
             return {
                 'success': True,
@@ -145,6 +146,7 @@ class FishingSystem:
                 if row['type'] == 'fish':  # 只获取鱼类物品
                     fish_data[row['name']] = {
                         'rarity': int(row['rarity']),
+                        'desc': row['desc'],
                         'price': int(row['price'])
                     }
 
@@ -176,6 +178,7 @@ class FishingSystem:
             count = fish_counts.get(fish_name, 0)
             stars = "⭐" * data['rarity']
             collection += f"🐟 {fish_name}\n"
+            collection += f"   说明: {data['desc']}\n"
             collection += f"   收集数量: {count}\n"
             collection += f"   稀有度: {stars}\n"
             collection += f"   价值: 💰{data['price']}金币\n"
