@@ -64,7 +64,7 @@ class Shop:
 
                     if sellable_count > 0:
                         sold_items[item_name] = sellable_count
-                        sell_price = int(float(items[item_name].get('price', 0)) * 0.6)
+                        sell_price = int(float(items[item_name].get('price', 0)) * 0.8)
                         total_gold += sell_price * sellable_count
 
                         # 从背包中移除指定数量的物品
@@ -122,9 +122,9 @@ class Shop:
                 else:
                     return f"背包中只有 {sellable_count} 个 {item_name}"
 
-            # 计算出售价格（原价的60%）
+            # 计算出售价格（原价的80%）
             original_price = float(items[item_name].get('price', 0))
-            sell_price = int(original_price * 0.6)
+            sell_price = int(original_price * 0.8)
             total_sell_price = sell_price * amount
 
             # 更新背包和金币

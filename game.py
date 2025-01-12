@@ -1,22 +1,24 @@
 import os
+import re
 import csv
-import random
-from plugins import *
-from common.log import logger
-from bridge.context import ContextType, Context
-from bridge.reply import Reply, ReplyType
-from channel.chat_message import ChatMessage
-import plugins
+import json
 import time
-from typing import Optional
-from .player import Player
-from .fishing_system import FishingSystem
+import random
+import random
+import plugins
 import datetime
+from plugins import *
 from .shop import Shop
 from .item import Item
+from .player import Player
+from typing import Optional
+from common.log import logger
 from .equipment import Equipment
-import json
 from .monopoly import MonopolySystem
+from .fishing_system import FishingSystem
+from bridge.reply import Reply, ReplyType
+from channel.chat_message import ChatMessage
+from bridge.context import ContextType, Context
 
 
 @plugins.register(
@@ -75,16 +77,41 @@ class Game(Plugin):
                     writer.writerow(['name', 'price'])
                     # 写入默认商品
                     default_items = [
-                        ['木剑', '100'],
-                        ['铁剑', '300'],
-                        ['布甲', '150'],
-                        ['铁甲', '400'],
-                        ['面包', '20'],
-                        ['药水', '50'],
-                        ['道生羽的节操', '1'],
-                        ['木制鱼竿', '200'],
-                        ['铁制鱼竿', '500'],
-                        ['金制鱼竿', '1000']
+                        ['木剑', '小孩子过家家玩的', 'weapon', '0', '5', '0', '500', '1'],
+                        ['匕首', '小巧的匕首，看起来很精致', 'weapon', '0', '8', '0', '800', '2'],
+                        ['铁剑', '更坚固的铁剑', 'weapon', '0', '12', '0', '1200', '2'],
+                        ['铁锤', '大锤八十。兄弟', 'weapon', '0', '20', '0', '2000', '3'],
+                        ['长枪', '一寸长，一寸强', 'weapon', '0', '25', '0', '2500', '3'],
+                        ['精钢剑', '由精钢打造的利剑', 'weapon', '0', '30', '0', '3000', '3'],
+                        ['讨伐棒', '可以发射火药的讨伐棒，乌萨奇严选', 'weapon', '0', '30', '0', '3000', '4'],
+                        ['战斧', '哥们现在是维京人了！', 'weapon', '0', '35', '0', '3500', '4'],
+                        ['青铜剑', '古老的青铜剑', 'weapon', '0', '40', '0', '4000', '4'],
+                        ['唐刀', '帅就完了', 'weapon', '0', '45', '0', '4500', '4'],
+                        ['双手巨剑', '魂1神器', 'weapon', '0', '50', '0', '5000', '4'],
+                        ['秘银剑', '魔法工匠打造的秘银剑', 'weapon', '0', '60', '0', '6000', '5'],
+                        ['湖女之剑', '我知道这把剑很强，但是它是不是来错片场了？是吧杰洛特。', 'weapon', '0', '70', '0', '7000', '5'],
+                        ['如意金箍棒', '重一万三千五百斤', 'weapon', '0', '100', '0', '10000', '5'],
+                        ['破衣烂衫', '你也不想当流浪汉，对吧', 'armor', '10', '0', '1', '100', '1'],
+                        ['斗篷', '提供基本保护的斗篷', 'armor', '30', '0', '3', '300', '1'],
+                        ['布甲', '简单的布制护甲', 'armor', '50', '0', '5', '500', '1'],
+                        ['乌萨奇睡衣', '乌拉呀哈~呀哈乌拉~', 'armor', '70', '0', '7', '700', '1'],
+                        ['皮甲', '轻便的皮质护甲', 'armor', '100', '0', '10', '1000', '2'],
+                        ['帝骑腰带', '都闪开，我要开始装B了', 'armor', '150', '0', '15', '1500', '2'],
+                        ['铁甲', '轻便的皮质护甲', 'armor', '180', '0', '18', '1800', '2'],
+                        ['锁子甲', '由链环组成的护甲', 'armor', '250', '0', '25', '2500', '3'],
+                        ['精钢甲', '精钢打造的铠甲', 'armor', '300', '0', '30', '3000', '3'],
+                        ['秘银铠甲', '帅是一辈子的事', 'armor', '380', '0', '38', '3800', '4'],
+                        ['初音未来cos服', '可爱捏~~等等，你刚刚说了你要穿着这玩意去打架，对吧？？？', 'armor', '100', '10', '4', '4000', '4'],
+                        ['荆棘铠甲', '你最好别碰我，兄弟，我不开玩笑', 'armor', '400', '15', '40', '4000', '4'],
+                        ['龙鳞甲', '龙鳞制成的铠甲', 'armor', '600', '0', '60', '6000', '5'],
+                        ['神圣铠甲', '具有神圣力量的铠甲', 'armor', '700', '0', '70', '7000', '6'],
+                        ['永恒战甲', '传说中的不朽铠甲', 'armor', '800', '0', '70', '8000', '7'],
+                        ['面包', '普普通通的面包，没什么特别的，回复20点生命值', 'consumable', '20', '0', '0', '20', '1'],
+                        ['药水', '出门必备的小药水，回复50点生命值', 'consumable', '50', '0', '0', '50', '2'],
+                        ['急救包', '出事儿了就得靠它，回复150点生命值', 'consumable', '80', '0', '0', '150', '3'],
+                        ['治疗卷轴', '麻瓜总是很难理解卷轴上的符文到底是怎么发挥作用的，回复200点生命值', 'consumable', '100', '0', '0', '200', '4'],
+                        ['元素瓶', '不死人的果粒橙', 'consumable', '400', '0', '0', '400', '5'],
+                        ['女神的祝福', '来自太阳长女葛温德林的祝福，回复800点生命值', 'consumable', '500', '0', '0', '800', '5']
                     ]
                     writer.writerows(default_items)
 
@@ -109,7 +136,7 @@ class Game(Plugin):
             config_file = os.path.join(self.data_dir, "config.json")
             if not os.path.exists(config_file):
                 default_config = {
-                    "admins": ["xxx"]  # 默认管理员列表
+                    "admins": ["野欲", "小鲨匕", "老B登", "上海-小鲨匕"]  # 默认管理员列表
                 }
                 with open(config_file, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, ensure_ascii=False, indent=2)
@@ -296,7 +323,7 @@ class Game(Plugin):
         if not current_id:
             return "无法获取您的ID，请确保ID已设置"
 
-        if not self.game_status and content not in ['注册', '开机', '关机', '定时', '查看定时', '取消定时', '清空定时']:
+        if not self.game_status and content not in ['注册', '开机', '关机', '充值', '定时', '查看定时', '取消定时', '清空定时']:
             return "游戏系统当前已关闭"
 
         logger.debug(f"当前用户信息 - current_id: {current_id}")
@@ -317,8 +344,11 @@ class Game(Plugin):
             "图鉴": lambda i, n: self.show_fish_collection(i, content),
             "出售": lambda i, n: self.shop.sell_item(i, content),
             "批量出售": lambda i, n: self.shop.sell_item(i, content),
+            "赌钱": lambda i, n: self.gamble(i, content),
             "外出": lambda i, n: self.go_out(i),
+            "冒险": lambda i, n: self.go_adventure(i),
             "使用": lambda i, n: self.use_item(i, content),
+            "排行": lambda i, n: self.show_leaderboard(i, content),
             "排行榜": lambda i, n: self.show_leaderboard(i, content),
             "求婚": lambda i, n: self.propose_marriage(i, content, msg),
             "同意求婚": lambda i, n: self.accept_marriage(i),
@@ -327,6 +357,7 @@ class Game(Plugin):
             "攻击": lambda i, n: self.attack_player(i, content, msg),
             "开机": lambda i, n: self.toggle_game_system(i, 'start'),
             "关机": lambda i, n: self.toggle_game_system(i, 'stop'),
+            "充值": lambda i, n: self.toggle_recharge(i, content),
             "定时": lambda i, n: self.schedule_game_system(i, content),
             "查看定时": lambda i, n: self.show_scheduled_tasks(i),
             "取消定时": lambda i, n: self.cancel_scheduled_task(i, content),
@@ -374,14 +405,16 @@ class Game(Plugin):
 
 交易相关
 ————————————
-💸 出售 [物品名] [数量] - 出售物品(原价60%)
+💸 出售 [物品名] [数量] - 出售物品(原价80%)
 📦 批量出售 [类型] - 批量出售背包物品
+🎲 赌钱 [大/小/x个x点] 数额 - 按照指定类型押注进行赌钱
 
 冒险相关
 ————————————
 🎣 钓鱼 - 进行钓鱼获取金币
 📖 图鉴 - 查看鱼类图鉴
-🌄 外出 - 外出探险冒险
+🌄 外出 - 外出开始大富翁游戏
+⚔️ 冒险 - 冒险打怪升级
 👊 攻击 [@用户] - 攻击其他玩家
 🗺️ 地图 - 查看游戏地图
 
@@ -408,6 +441,7 @@ class Game(Plugin):
 ————————————
 🔧 开机 - 开启游戏系统
 🔧 关机 - 关闭游戏系统
+💴 充值 [@用户] 数额 - 为指定用户充值指定数额的金币
 ⏰ 定时 [开机/关机] [时间] [每天] - 设置定时任务
 📋 查看定时 - 查看定时任务
 ❌ 取消定时 [开机/关机] [时间] - 取消定时任务
@@ -486,7 +520,7 @@ class Game(Plugin):
 
         if last_fishing_str:
             last_fishing = datetime.datetime.strptime(last_fishing_str, '%Y-%m-%d %H:%M:%S')
-            cooldown = datetime.timedelta(minutes=3)  # 3分钟冷却时间
+            cooldown = datetime.timedelta(minutes=1)  # 3分钟冷却时间
             if now - last_fishing < cooldown:
                 remaining = cooldown - (now - last_fishing)
                 return f"钓鱼冷却中，还需等待 {remaining.seconds} 秒"
@@ -595,26 +629,6 @@ class Game(Plugin):
             self._update_player_data(user_id, {'gold': str(new_gold)})
             result.append(f"经过起点获得 {bonus} 金币")
 
-        elif block['type'] == '森林':
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player))
-            result.append(battle_result)
-
-        elif block['type'] == '机遇':
-            event = self.monopoly.trigger_random_event()
-            if 'effect' in event:
-                for key, value in event['effect'].items():
-                    if key == 'gold':
-                        new_gold = int(player.gold) + value
-                        self._update_player_data(user_id, {'gold': str(new_gold)})
-                        # 添加金币变化提示
-                        if value > 0:
-                            result.append(f"💰 获得 {value} 金币")
-                        else:
-                            result.append(f"💸 失去 {abs(value)} 金币")
-            result.append(f"🎲 触发事件: {event['name']}")
-            result.append(event['description'])
-
         elif block['type'] in ['空地', '直辖市', '省会', '地级市', '县城', '乡村']:
             property_info = self.monopoly.get_property_owner(new_position)
             if property_info is None or 'owner' not in property_info:
@@ -662,32 +676,266 @@ class Game(Plugin):
 
         return "\n".join(result)
 
-    def _generate_monster(self, player):
-        """根据玩家等级生成怪物"""
-        player_level = int(player.level)
-        level_factor = 1 + (player_level - 1) * 0.2
+    # 冒险
+    def go_adventure(self, user_id):
+        """冒险"""
+        player = self.get_player(user_id)
+        if not player:
+            return "您还没有注册游戏"
 
-        monsters = [
-            {
-                'name': '森林史莱姆',
-                'hp': int(60 * level_factor),
-                'attack': int(10 * level_factor),
-                'defense': int(6 * level_factor),
-                'exp': int(20 * level_factor),
-                'gold': int(30 * level_factor)
-            },
-            # ... 其他森林怪物
+        # 检查玩家状态
+        if int(player.hp) <= 0:
+            return "您的生命值不足，请先使用药品恢复"
+
+        # 掷骰子
+        steps = self.monopoly.roll_dice()
+
+        # 获取随机数种子
+        seed = steps % self.monopoly.adventure_map_data["total_blocks"]
+
+        # 获取冒险地图信息
+        block = self.monopoly.get_adventure_block_info(seed)
+
+        logger.info(f"[DEBUG] 玩家 {user_id} 冒险，位置: {seed}, 地图信息: {block}")
+
+        result = [
+            f"🎲 掷出 {steps} 点",
+            f"来到了 [{block['name']}]\n\n{block['description']}\n"
         ]
 
-        monster = random.choice(monsters)
-        if random.random() < 0.15:  # 15%概率变异
-            monster['name'] = f"变异{monster['name']}"
-            monster['hp'] = int(monster['hp'] * 1.5)
-            monster['attack'] = int(monster['attack'] * 1.3)
-            monster['defense'] = int(monster['defense'] * 1.2)
-            monster['exp'] = int(monster['exp'] * 1.5)
-            monster['gold'] = int(monster['gold'] * 1.5)
+        if block['type'] == '森林':
+            string_array = ["怪物巢穴", "古树之心", "迷雾谷地", "幽灵空地", "腐烂树林", "灵兽栖息地", "毒沼密林", "月光草原", "荒弃村落", "暗影森林"]
+            # 随机进入一个场景
+            scene = random.choice(string_array)
+            # 触发战斗
+            battle_result = self._battle(user_id, self._generate_monster(player, scene))
+            result.append(battle_result)
+        if block['type'] == '山脉':
+            string_array = ["绝壁险峰", "熔岩洞窟", "风暴山巅"]
+            # 随机进入一个场景
+            scene = random.choice(string_array)
+            # 触发战斗
+            battle_result = self._battle(user_id, self._generate_monster(player, scene))
+            result.append(battle_result)
+        if block['type'] == '沙漠':
+            string_array = ["流沙之地", "烈日废墟", "沙暴迷城"]
+            # 随机进入一个场景
+            scene = random.choice(string_array)
+            # 触发战斗
+            battle_result = self._battle(user_id, self._generate_monster(player, scene))
+            result.append(battle_result)
+        if block['type'] == '冰原':
+            string_array = ["寒冰峡谷", "冻土遗迹"]
+            # 随机进入一个场景
+            scene = random.choice(string_array)
+            # 触发战斗
+            battle_result = self._battle(user_id, self._generate_monster(player, scene))
+            result.append(battle_result)
+        if block['type'] == '沼泽':
+            string_array = ["毒雾沼泽", "枯骨之地"]
+            # 随机进入一个场景
+            scene = random.choice(string_array)
+            # 触发战斗
+            battle_result = self._battle(user_id, self._generate_monster(player, scene))
+            result.append(battle_result)
+        elif block['type'] == '机遇':
+            event = self.monopoly.trigger_random_event()
+            if 'effect' in event:
+                for key, value in event['effect'].items():
+                    if key == 'gold':
+                        new_gold = int(player.gold) + value
+                        self._update_player_data(user_id, {'gold': str(new_gold)})
+                        # 添加金币变化提示
+                        if value > 0:
+                            result.append(f"💰 获得 {value} 金币")
+                        else:
+                            result.append(f"💸 失去 {abs(value)} 金币")
+            result.append(f"🎲 触发事件: {event['name']}")
+            result.append(event['description'])
 
+        return "\n".join(result)
+
+    def _generate_monster(self, player, scene):
+        """
+        根据玩家等级和场景生成怪物
+
+        :param player: 玩家对象，需有 `level` 属性
+        :param scene: 场景名称，对应 "怪物巢穴"、"古树之心" 等
+        :return: 生成的怪物字典信息
+        """
+        # 校验传入的玩家等级合法性
+        player_level = max(1, int(player.level))  # 玩家等级至少为 1
+        level_factor = 1 + (player_level - 1) * 0.2
+
+        # 定义怪物库
+        monsters = {
+            "怪物巢穴": [
+                {'name': '森林史莱姆', 'hp': int(60 * level_factor), 'attack': int(1.3 * 10 * level_factor), 'defense': int(6 * level_factor), 'exp': int(20 * level_factor), 'gold': int(10 * 30 * level_factor)},
+                {'name': '潜伏狼蛛', 'hp': int(80 * level_factor), 'attack': int(1.3 * 15 * level_factor), 'defense': int(8 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 35 * level_factor)},
+                {'name': '巢穴蝙蝠', 'hp': int(50 * level_factor), 'attack': int(1.3 * 12 * level_factor), 'defense': int(5 * level_factor), 'exp': int(18 * level_factor), 'gold': int(10 * 28 * level_factor)},
+                {'name': '毒刺蜂', 'hp': int(70 * level_factor), 'attack': int(1.3 * 18 * level_factor), 'defense': int(7 * level_factor), 'exp': int(22 * level_factor), 'gold': int(10 * 32 * level_factor)},
+                {'name': '黑影潜伏者', 'hp': int(100 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 40 * level_factor)}
+            ],
+            "古树之心": [
+                {'name': '树精守卫', 'hp': int(120 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(15 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '魔化藤蔓', 'hp': int(90 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(12 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '树灵幽影', 'hp': int(80 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 42 * level_factor)},
+                {'name': '腐化树妖', 'hp': int(150 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(18 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 60 * level_factor)},
+                {'name': '古树之魂', 'hp': int(200 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(20 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 70 * level_factor)}
+            ],
+            "迷雾谷地": [
+                {'name': '雾影幽魂', 'hp': int(70 * level_factor), 'attack': int(1.3 * 18 * level_factor), 'defense': int(8 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 35 * level_factor)},
+                {'name': '迷雾猎手', 'hp': int(90 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '隐匿毒蛇', 'hp': int(60 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(6 * level_factor), 'exp': int(22 * level_factor), 'gold': int(10 * 32 * level_factor)},
+                {'name': '雾中行者', 'hp': int(110 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '迷雾巨兽', 'hp': int(150 * level_factor), 'attack': int(1.3 * 32 * level_factor), 'defense': int(18 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 65 * level_factor)}
+            ],
+            "幽灵空地": [
+                {'name': '幽灵战士', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '亡灵弓手', 'hp': int(80 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(10 * level_factor), 'exp': int(32 * level_factor), 'gold': int(10 * 48 * level_factor)},
+                {'name': '怨灵法师', 'hp': int(90 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(8 * level_factor), 'exp': int(38 * level_factor), 'gold': int(10 * 52 * level_factor)},
+                {'name': '幽魂骑士', 'hp': int(140 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '复仇亡灵', 'hp': int(160 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 70 * level_factor)}
+            ],
+            "腐烂树林": [
+                {'name': '腐朽树妖', 'hp': int(120 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(15 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '毒液史莱姆', 'hp': int(70 * level_factor), 'attack': int(1.3 * 18 * level_factor), 'defense': int(8 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 35 * level_factor)},
+                {'name': '腐化狼蛛', 'hp': int(80 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 40 * level_factor)},
+                {'name': '腐木傀儡', 'hp': int(150 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(18 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '树根潜伏者', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)}
+            ],
+            "灵兽栖息地": [
+                {'name': '灵气鹿', 'hp': int(80 * level_factor), 'attack': int(1.3 * 15 * level_factor), 'defense': int(12 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 40 * level_factor)},
+                {'name': '守护灵兽', 'hp': int(120 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(18 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '灵狐幻影', 'hp': int(70 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 38 * level_factor)},
+                {'name': '秘境猛虎', 'hp': int(140 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(15 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '灵域飞龙', 'hp': int(180 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 80 * level_factor)}
+            ],
+            "毒沼密林": [
+                {'name': '毒液巨蛛', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '毒气史莱姆', 'hp': int(80 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 38 * level_factor)},
+                {'name': '瘴气妖藤', 'hp': int(120 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(15 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '毒雾蜥蜴', 'hp': int(90 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 42 * level_factor)},
+                {'name': '瘴气守护者', 'hp': int(160 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(20 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 70 * level_factor)}
+            ],
+            "月光草原": [
+                {'name': '草原狼群', 'hp': int(80 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 40 * level_factor)},
+                {'name': '隐匿猎手', 'hp': int(90 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '月光幽灵', 'hp': int(100 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(10 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '夜影刺客', 'hp': int(110 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 60 * level_factor)},
+                {'name': '草原巨熊', 'hp': int(200 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(25 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 80 * level_factor)}
+            ],
+            "荒弃村落": [
+                {'name': '村落幽魂', 'hp': int(90 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 40 * level_factor)},
+                {'name': '腐化村民', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(15 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '废墟潜伏者', 'hp': int(80 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(12 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 38 * level_factor)},
+                {'name': '憎恶尸鬼', 'hp': int(150 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '村落恶鬼', 'hp': int(120 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 60 * level_factor)}
+            ],
+            "暗影森林": [
+                {'name': '暗影猎手', 'hp': int(100 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(15 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '黑暗幽灵', 'hp': int(90 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '夜行毒蛇', 'hp': int(80 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 38 * level_factor)},
+                {'name': '暗影潜伏者', 'hp': int(120 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(18 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '黑暗树妖', 'hp': int(150 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(55 * level_factor), 'gold': int(10 * 75 * level_factor)}
+            ],
+            "绝壁险峰": [
+                {'name': '山崖猛禽', 'hp': int(80 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '岩石巨人', 'hp': int(150 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(30 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 70 * level_factor)},
+                {'name': '爬山毒蛇', 'hp': int(70 * level_factor), 'attack': int(1.3 * 15 * level_factor), 'defense': int(10 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 35 * level_factor)},
+                {'name': '峭壁蝙蝠', 'hp': int(60 * level_factor), 'attack': int(1.3 * 10 * level_factor), 'defense': int(8 * level_factor), 'exp': int(20 * level_factor), 'gold': int(10 * 30 * level_factor)},
+                {'name': '崖顶恶鹰', 'hp': int(130 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(12 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)}
+            ],
+            "熔岩洞窟": [
+                {'name': '火焰元素', 'hp': int(100 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(12 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 60 * level_factor)},
+                {'name': '熔岩巨人', 'hp': int(180 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(20 * level_factor), 'exp': int(70 * level_factor), 'gold': int(10 * 90 * level_factor)},
+                {'name': '火焰蝙蝠', 'hp': int(80 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(10 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '熔岩魔蛇', 'hp': int(90 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(15 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 42 * level_factor)},
+                {'name': '炎爆恶魔', 'hp': int(200 * level_factor), 'attack': int(1.3 * 60 * level_factor), 'defense': int(25 * level_factor), 'exp': int(80 * level_factor), 'gold': int(10 * 100 * level_factor)}
+            ],
+            "流沙之地": [
+                {'name': '流沙巨蟒', 'hp': int(120 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(10 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '沙漠蝎子', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '沙尘潜伏者', 'hp': int(80 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(8 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 40 * level_factor)},
+                {'name': '沙之傀儡', 'hp': int(160 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 70 * level_factor)},
+                {'name': '沙漠猎犬', 'hp': int(90 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(32 * level_factor), 'gold': int(10 * 45 * level_factor)}
+            ],
+            "烈日废墟": [
+                {'name': '炎蝎', 'hp': int(100 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(10 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '废墟幽魂', 'hp': int(120 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 60 * level_factor)},
+                {'name': '火焰殉教者', 'hp': int(140 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 75 * level_factor)},
+                {'name': '石化蜥蜴', 'hp': int(80 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '烈日幻影', 'hp': int(70 * level_factor), 'attack': int(1.3 * 23 * level_factor), 'defense': int(8 * level_factor), 'exp': int(28 * level_factor), 'gold': int(10 * 40 * level_factor)}
+            ],
+            "沙暴迷城": [
+                {'name': '沙暴刺客', 'hp': int(90 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(12 * level_factor), 'exp': int(35 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '废墟守卫', 'hp': int(150 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 70 * level_factor)},
+                {'name': '迷城幽魂', 'hp': int(110 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(10 * level_factor), 'exp': int(38 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '黄沙巫师', 'hp': int(80 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(8 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '沙暴元素', 'hp': int(130 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(15 * level_factor), 'exp': int(55 * level_factor), 'gold': int(10 * 65 * level_factor)}
+            ],
+            "寒冰峡谷": [
+                {'name': '极地狼群', 'hp': int(120 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(15 * level_factor), 'exp': int(40 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '冰原独角兽', 'hp': int(150 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '寒霜飞鹰', 'hp': int(90 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(32 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '冰霜元素', 'hp': int(130 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(12 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '极寒古龙', 'hp': int(200 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(25 * level_factor), 'exp': int(80 * level_factor), 'gold': int(10 * 100 * level_factor)}
+            ],
+            "冻土遗迹": [
+                {'name': '遗迹守护者', 'hp': int(140 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 75 * level_factor)},
+                {'name': '冰冻骷髅', 'hp': int(120 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 55 * level_factor)},
+                {'name': '冻土游魂', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(38 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '霜冻教徒', 'hp': int(80 * level_factor), 'attack': int(1.3 * 22 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 42 * level_factor)},
+                {'name': '寒霜傀儡', 'hp': int(160 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)}
+            ],
+            "毒雾沼泽": [
+                {'name': '毒鳞鱼人', 'hp': int(90 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(12 * level_factor), 'exp': int(32 * level_factor), 'gold': int(10 * 42 * level_factor)},
+                {'name': '腐臭鳄鱼', 'hp': int(120 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 60 * level_factor)},
+                {'name': '瘴气渡鸦', 'hp': int(70 * level_factor), 'attack': int(1.3 * 18 * level_factor), 'defense': int(8 * level_factor), 'exp': int(25 * level_factor), 'gold': int(10 * 38 * level_factor)},
+                {'name': '泥潭刺客', 'hp': int(150 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 75 * level_factor)},
+                {'name': '沼泽魔神', 'hp': int(200 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(25 * level_factor), 'exp': int(80 * level_factor), 'gold': int(10 * 100 * level_factor)}
+            ],
+            "枯骨之地": [
+                {'name': '枯骨战士', 'hp': int(100 * level_factor), 'attack': int(1.3 * 28 * level_factor), 'defense': int(12 * level_factor), 'exp': int(38 * level_factor), 'gold': int(10 * 50 * level_factor)},
+                {'name': '沼泽骷髅', 'hp': int(90 * level_factor), 'attack': int(1.3 * 20 * level_factor), 'defense': int(10 * level_factor), 'exp': int(30 * level_factor), 'gold': int(10 * 45 * level_factor)},
+                {'name': '不死巫师', 'hp': int(130 * level_factor), 'attack': int(1.3 * 35 * level_factor), 'defense': int(18 * level_factor), 'exp': int(50 * level_factor), 'gold': int(10 * 65 * level_factor)},
+                {'name': '亡灵巨兽', 'hp': int(160 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 75 * level_factor)},
+                {'name': '骨堆恶灵', 'hp': int(200 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(25 * level_factor), 'exp': int(80 * level_factor), 'gold': int(10 * 100 * level_factor)}
+            ]
+        }
+
+        # 校验场景是否有效
+        if scene not in monsters:
+            raise ValueError(f"无效的场景名称：{scene}")
+
+        # 随机选择该场景中的一个怪物
+        monster = random.choice(monsters[scene])
+
+        # 判断是否生成变异怪物
+        if self._is_mutant():  # 使用抽象方法判断是否变异
+            monster = self._apply_mutation(monster)
+
+        return monster
+
+    def _is_mutant(self):
+        """
+        判断怪物是否变异
+        :return: True if mutant, otherwise False
+        """
+        return random.random() < 0.15  # 15% 的变异概率
+
+    def _apply_mutation(self, monster):
+        """
+        对怪物应用变异属性
+        :param monster: 原怪物数据
+        :return: 变异后的怪物字典
+        """
+        monster['name'] = f"变异{monster['name']}"
+        monster['hp'] = int(monster['hp'] * 1.5)
+        monster['attack'] = int(monster['attack'] * 1.3)
+        monster['defense'] = int(monster['defense'] * 1.2)
+        monster['exp'] = int(monster['exp'] * 1.5)
+        monster['gold'] = int(monster['gold'] * 1.5)
         return monster
 
     def _battle(self, user_id, monster):
@@ -720,7 +968,7 @@ class Game(Plugin):
         monster_max_hp = monster['hp']
         monster_defense = monster['defense']
 
-        battle_log = [f"⚔️ 遭遇了 {monster['name']}"]
+        battle_log = [f"⚔️ 遭遇了 {monster['name']}！"]
         battle_log.append(f"\n你的属性:")
         battle_log.append(f"❤️ 生命值: {player_total_hp} (基础{player_base_hp} / 装备{hp_bonus})")
         battle_log.append(f"⚔️ 攻击力: {player_total_attack} (基础{player_base_attack} / 装备{weapon_bonus})")
@@ -928,7 +1176,6 @@ class Game(Plugin):
 
         return f"使用 {amount} 个 {item_name}，恢复 {new_hp - current_hp} 点生命值！\n当前生命值: {new_hp}/{max_hp}"
 
-
     def get_player_status(self, user_id):
         """获取玩家状态"""
         player = self.get_player(user_id)
@@ -960,7 +1207,7 @@ class Game(Plugin):
                 return "您今天已经签到过了"
 
             # 计算奖励
-            reward = 1000  # 签到奖励1000金币
+            reward = 2000  # 签到奖励2000金币
             exp_reward = 100  # 签到奖励100经验
             logger.info(f"用户 {user_id} 签到奖励: {reward}金币, {exp_reward}经验")
 
@@ -1633,6 +1880,67 @@ class Game(Plugin):
             logger.error(f"切换游戏系统状态出错: {e}")
             return "操作失败，请检查系统状态"
 
+    def extract_username_and_amount(self, text):
+        """
+        从字符串中提取用户名和金额。
+
+        参数:
+            text (str): 输入的字符串，例如 '充值 @用户名 1000'
+
+        返回:
+            tuple: (用户名, 金额) 如果匹配失败，则返回 (None, None)
+        """
+        # 定义正则表达式模式
+        pattern = r'充值\s+@(\w+)\s+(\d+)'
+        match = re.search(pattern, text)
+
+        if match:
+            username = match.group(1)
+            amount = int(match.group(2))
+            return username, amount
+        else:
+            return None, None
+
+    def toggle_recharge(self, user_id, content):
+        """充值系统"""
+        try:
+            # 获取玩家对象
+            player = self.get_player(user_id)
+            if not player:
+                # 检查是否是默认管理员
+                config_file = os.path.join(self.data_dir, "config.json")
+                if os.path.exists(config_file):
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                        if user_id not in config.get("admins", []):
+                            return "您还没有注册游戏"
+                else:
+                    return "您还没有注册游戏"
+            elif not self._is_admin(player):
+                return "只有管理员才能进行充值操作！"
+
+            target_name, amount = self.extract_username_and_amount(content)
+
+            if target_name and amount:
+                logger.info(f"充值目标：{target_name}，金额：{amount}")
+                # 根据昵称获取玩家
+                target = Player.get_player_by_nickname(target_name, self.player_file)
+                if not target:
+                    return "找不到目标玩家，请确保输入了正确的用户名"
+                else:
+                    # 执行充值操作
+                    target.gold = int(target.gold) + amount
+                    # 更新目标玩家的金币数据
+                    self._update_player_data(target.user_id, {
+                        'gold': str(target.gold)
+                    })
+                    return f"已为 {target.nickname} 用户充值 {amount} 金币。"
+            else:
+                return "请使用正确的格式：充值 @用户名 金额"
+        except Exception as e:
+            logger.error(f"充值出错: {e}")
+            return "充值失败，请联系管理员。"
+
     def schedule_game_system(self, user_id, content):
         """设置定时开关机"""
         player = self.get_player(user_id)
@@ -2037,3 +2345,123 @@ class Game(Plugin):
                 result.append("————————————")
 
         return "\n".join(result)
+
+    def gamble(self, user_id, bet_str):
+        """
+        处理赌博命令，解析下注类型和金额，模拟掷骰子，并计算结果。
+
+        参数:
+            bet_str (str): 输入的下注字符串，格式如 '赌钱 大 5000'
+
+        返回:
+            dict: 包含骰子结果、是否获胜以及收益或亏损金额
+        """
+
+        # 获取玩家对象
+        player = self.get_player(user_id)
+        if not player:
+            return "您还没有注册游戏"
+
+        # 定义下注类型及对应的赔率
+        odds = {
+            '大': 1,       # 赔率 1:1
+            '小': 1,       # 赔率 1:1
+            '豹子': 30,    # 赔率 30:1
+            '顺子': 5      # 赔率 5:1
+        }
+
+        DICE_EMOJI = {
+            1: '⚀',  # ⚀
+            2: '⚁',  # ⚁
+            3: '⚂',  # ⚂
+            4: '⚃',  # ⚃
+            5: '⚄',  # ⚄
+            6: '⚅',  # ⚅
+        }
+
+        # 使用正则表达式解析输入字符串
+        pattern = r'^赌钱\s+(大|小|豹子|顺子)\s+(\d+)$'
+        match = re.match(pattern, bet_str.strip())
+
+        if not match:
+            return "输入格式不正确。正确格式如：赌钱 大 5000"
+
+        bet_type, amount_str = match.groups()
+        amount = int(amount_str)
+
+        # 验证下注金额是否为正整数
+        if amount <= 0:
+            return "下注金额必须为正整数。"
+
+        # 判断玩家本金是否足够下注
+        player_gold = int(player.gold)
+        if player_gold < amount:
+            return f"您的本金不足，无法进行下注。\n您的余额：{player_gold} 金币"
+
+        # 设置随机数种子为当前时间
+        current_time = time.time()
+        random.seed(current_time)
+
+        # 模拟掷三颗骰子
+        dice = [random.randint(1, 6) for _ in range(3)]
+        total = sum(dice)
+
+        dice_faces = ' '.join([DICE_EMOJI.get(d, '❓') for d in dice])
+
+        # 判断是否获胜
+        win = False
+        payout = 0
+
+        if bet_type == '大':
+            if 11 <= total <= 18:
+                win = True
+                payout = amount * odds[bet_type]
+        elif bet_type == '小':
+            if 3 <= total <= 10:
+                win = True
+                payout = amount * odds[bet_type]
+        elif bet_type == '豹子':
+            if dice[0] == dice[1] == dice[2]:
+                win = True
+                payout = amount * odds[bet_type]
+        elif bet_type == '顺子':
+            # 列出所有有效的顺子组合，包括循环顺子
+            valid_straights = [
+                [1, 2, 3],
+                [2, 3, 4],
+                [3, 4, 5],
+                [4, 5, 6],
+                [1, 5, 6],
+                [1, 2, 6]
+            ]
+            # 检查骰子是否构成顺子
+            sorted_dice = sorted(dice)
+            if sorted_dice in valid_straights:
+                win = True
+                payout = amount * odds[bet_type]
+
+        # 计算结果
+        if win:
+            result = {
+                'dice': dice,
+                'result': '胜利',
+                'payout': payout
+            }
+        else:
+            payout = -amount
+            result = {
+                'dice': dice,
+                'result': '失败',
+                'payout': payout
+            }
+
+        # 结算赌博收入
+        player.gold = int(player.gold) + payout
+        # 更新目标玩家的金币数据
+        self._update_player_data(player.user_id, {
+            'gold': str(player.gold)
+        })
+
+        result_str = f"━━━━━━━━━━━━━━━\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n{'✅ 恭喜您赢得了' if win else '❌ 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n━━━━━━━━━━━━━━━"
+
+        return result_str
