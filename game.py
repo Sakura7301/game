@@ -683,6 +683,16 @@ class Game(Plugin):
         if not player:
             return "您还没有注册游戏"
 
+        # 检查冷却时间（冒险cd: 10s）
+        current_time = int(time.time())
+        adventure_last_attack_time = int(player.adventure_last_attack_time)
+        cooldown = 10
+
+        # 检查冷却时间
+        if current_time - adventure_last_attack_time < cooldown:
+            remaining = cooldown - (current_time - adventure_last_attack_time)
+            return f"您刚刚进行过冒险活动,请等待 {remaining} 秒后再次进行冒险"
+
         # 检查玩家状态
         if int(player.hp) <= 0:
             return "您的生命值不足，请先使用药品恢复"

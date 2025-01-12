@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Dict, Any, Optional
 import csv
 import logging
@@ -17,6 +18,7 @@ class Player:
         self.data = data
         self.player_file = player_file
         self.standard_fields = standard_fields
+        self.adventure_last_attack_time = int(time.time())
 
         # 清理耐久度为0的记录
         if 'rod_durability' in self.data:
