@@ -91,7 +91,7 @@ class FishingSystem:
             message += f"📊 稀有度: {stars}\n"
             message += f"💰 基础价值: {caught_fish.get('price', '0')}金币\n"
             message += f"🎯 鱼竿加成: x{rod_bonus} ({rod})\n"
-            message += f"🪙 实际获得: {coins_reward}金币\n"
+            message += f"🪙 金币奖励: {coins_reward}金币\n"
             message += f"⚡ 耐久消耗: -{durability_cost} ({remaining_durability}/100)\n"
             message += f"🎲 当前幸运值: {base_chance*100:.0f}%\n"
             message += f"━━━━━━━━━━━━━━━"

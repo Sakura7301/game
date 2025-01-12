@@ -138,7 +138,7 @@ class Shop:
             # 保存更新后的玩家数据
             player.save_player_data(self.game.player_file, self.game.STANDARD_FIELDS)
 
-            return f"成功出售 {amount} 个 {item_name}，获得 {total_sell_price} 金币"
+            return f"[{item_name}]\n💰基础价值：{original_price}金币\n♻️回收比例：80%\n成功出售 {amount}个{item_name}，获得{total_sell_price}金币"
 
         return "无效的出售命令"
 
