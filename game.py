@@ -7,6 +7,7 @@ import random
 import random
 import plugins
 import datetime
+import threading
 from plugins import *
 from .shop import Shop
 from .item import Item
@@ -50,7 +51,8 @@ class Game(Plugin):
     def __init__(self):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-
+        # 初始化锁
+        self.lock = threading.Lock()
         # 添加进程锁和状态恢复逻辑
         try:
             self.data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -318,7 +320,7 @@ class Game(Plugin):
         # 获取用户ID作为主要标识符
         current_id = msg.actual_user_id if msg.is_group else msg.from_user_id
 
-        # 修改这里：使用 sender 作为昵称
+        # 使用 sender 作为昵称
         nickname = msg.actual_user_nickname if msg.is_group else msg.from_user_nickname
 
         if not current_id:
@@ -372,17 +374,23 @@ class Game(Plugin):
         }
 
         cmd = content.split()[0]
-        if cmd in cmd_handlers:
-            reply = cmd_handlers[cmd](current_id, nickname)
-            # 添加活动提醒
-            reminders = self.get_active_reminders()
-            if reminders:
-                reply += f"\n\n📢 当前提醒:\n{reminders}"
-                reply += "\n📢 如何使用提醒:\n设置提醒: 提醒 内容"
-            e_context['reply'] = Reply(ReplyType.TEXT, reply)
-            e_context.action = EventAction.BREAK_PASS
-        else:
-            e_context.action = EventAction.CONTINUE
+        with self.lock:  # 获取锁
+            if cmd in cmd_handlers:
+                try:
+                    reply = cmd_handlers[cmd](current_id, nickname)
+                    # 添加活动提醒
+                    reminders = self.get_active_reminders()
+                    if reminders:
+                        reply += f"\n\n📢 当前提醒:\n{reminders}"
+                        reply += "\n📢 如何使用提醒:\n设置提醒: 提醒 内容"
+                    e_context['reply'] = Reply(ReplyType.TEXT, reply)
+                    e_context.action = EventAction.BREAK_PASS
+                except Exception as e:
+                    logger.error(f"处理指令 '{cmd}' 时出错: {e}")
+                    e_context['reply'] = Reply(ReplyType.TEXT, "处理您的指令时发生错误，请稍后再试。")
+                    e_context.action = EventAction.BREAK_PASS
+            else:
+                e_context.action = EventAction.CONTINUE
 
     def game_help(self):
         import time
@@ -629,7 +637,20 @@ class Game(Plugin):
             new_gold = int(player.gold) + bonus
             self._update_player_data(user_id, {'gold': str(new_gold)})
             result.append(f"经过起点获得 {bonus} 金币")
-
+        elif block['type'] == '机遇':
+            event = self.monopoly.trigger_random_event()
+            if 'effect' in event:
+                for key, value in event['effect'].items():
+                    if key == 'gold':
+                        new_gold = int(player.gold) + value
+                        self._update_player_data(user_id, {'gold': str(new_gold)})
+                        # 添加金币变化提示
+                        if value > 0:
+                            result.append(f"💰 获得 {value} 金币")
+                        else:
+                            result.append(f"💸 失去 {abs(value)} 金币")
+            result.append(f"🎲 触发事件: {event['name']}")
+            result.append(event['description'])
         elif block['type'] in ['空地', '直辖市', '省会', '地级市', '县城', '乡村']:
             property_info = self.monopoly.get_property_owner(new_position)
             if property_info is None or 'owner' not in property_info:
@@ -706,68 +727,40 @@ class Game(Plugin):
         # 掷骰子
         steps = self.monopoly.roll_dice()
 
-        # 获取随机数种子
-        seed = steps % self.monopoly.adventure_map_data["total_blocks"]
-
         # 获取冒险地图信息
-        block = self.monopoly.get_adventure_block_info(seed)
+        block = self.monopoly.get_adventure_block_info(steps)
 
-        logger.info(f"[DEBUG] 玩家 {user_id} 冒险，位置: {seed}, 地图信息: {block}")
+        logger.info(f"[DEBUG] 玩家 {user_id} 冒险，位置: {steps}, 地图信息: {block}")
 
         result = [
             f"🎲 掷出 {steps} 点",
-            f"来到了 [{block['name']}]\n\n{block['description']}\n"
+            f"[{player.nickname}] 来到了 [{block['name']}]\n\n{block['description']}\n"
         ]
 
         if block['type'] == '森林':
             string_array = ["怪物巢穴", "古树之心", "迷雾谷地", "幽灵空地", "腐烂树林", "灵兽栖息地", "毒沼密林", "月光草原", "荒弃村落", "暗影森林"]
             # 随机进入一个场景
             scene = random.choice(string_array)
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player, scene))
-            result.append(battle_result)
         if block['type'] == '山脉':
             string_array = ["绝壁险峰", "熔岩洞窟", "风暴山巅"]
             # 随机进入一个场景
             scene = random.choice(string_array)
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player, scene))
-            result.append(battle_result)
         if block['type'] == '沙漠':
             string_array = ["流沙之地", "烈日废墟", "沙暴迷城"]
             # 随机进入一个场景
             scene = random.choice(string_array)
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player, scene))
-            result.append(battle_result)
         if block['type'] == '冰原':
             string_array = ["寒冰峡谷", "冻土遗迹"]
             # 随机进入一个场景
             scene = random.choice(string_array)
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player, scene))
-            result.append(battle_result)
         if block['type'] == '沼泽':
             string_array = ["毒雾沼泽", "枯骨之地"]
             # 随机进入一个场景
             scene = random.choice(string_array)
-            # 触发战斗
-            battle_result = self._battle(user_id, self._generate_monster(player, scene))
-            result.append(battle_result)
-        elif block['type'] == '机遇':
-            event = self.monopoly.trigger_random_event()
-            if 'effect' in event:
-                for key, value in event['effect'].items():
-                    if key == 'gold':
-                        new_gold = int(player.gold) + value
-                        self._update_player_data(user_id, {'gold': str(new_gold)})
-                        # 添加金币变化提示
-                        if value > 0:
-                            result.append(f"💰 获得 {value} 金币")
-                        else:
-                            result.append(f"💸 失去 {abs(value)} 金币")
-            result.append(f"🎲 触发事件: {event['name']}")
-            result.append(event['description'])
+
+        # 触发战斗
+        battle_result = self._battle(user_id, self._generate_monster(player, scene))
+        result.append(battle_result)
 
         return "\n".join(result)
 
@@ -964,36 +957,45 @@ class Game(Plugin):
         player_base_defense = int(player.defense)
 
         # 获取装备加成
-        weapon_bonus = self.equipment_system.get_weapon_bonus(player)
-        armor_reduction = self.equipment_system.get_armor_reduction(player)
+        attack_additional = self.equipment_system.get_weapon_bonus(player)
+        defense_additional = self.equipment_system.get_armor_reduction(player)
 
         # 获取护甲提供的生命值加成
-        hp_bonus = 0
+        hp_additional = 0
         if player.equipped_armor:
             items_info = self.item_system.get_all_items()
             if player.equipped_armor in items_info:
                 armor_info = items_info[player.equipped_armor]
-                hp_bonus = int(armor_info.get('hp', 0))
+                hp_additional = int(armor_info.get('hp', 0))
 
-        # 计算总属性
-        player_total_hp = player_base_hp + hp_bonus
-        player_total_attack = player_base_attack + weapon_bonus
-        player_total_defense = player_base_defense + int(armor_reduction * player_base_defense)
+        # 玩家属性
+        player_hp = player_base_hp + hp_additional
+        player_max_hp = player_base_hp + hp_additional
+        player_attack = player_base_attack + attack_additional
+        player_defense = player_base_defense + defense_additional
+        player_name = player.nickname
 
+        # 怪物属性
         monster_hp = monster['hp']
         monster_max_hp = monster['hp']
+        monster_attack = monster['attack']
         monster_defense = monster['defense']
+        monster_name = monster.get('name', '未知怪物')
+
+        #日志打印怪物属性
+        logger.debug(f"玩家[{player_name}]属性: 生命值: {player_hp}, 攻击力: {player_attack}, 防御力: {player_defense}")
+        logger.debug(f"怪物[{monster_name}]属性: 生命值: {monster_hp}, 攻击力: {monster_attack}, 防御力: {monster_defense}")
 
         battle_log = [f"⚔️ 遭遇了 {monster['name']}！"]
         battle_log.append(f"\n你的属性:")
-        battle_log.append(f"❤️ 生命值: {player_total_hp} (基础{player_base_hp} / 装备{hp_bonus})")
-        battle_log.append(f"⚔️ 攻击力: {player_total_attack} (基础{player_base_attack} / 装备{weapon_bonus})")
-        battle_log.append(f"🛡️ 防御力: {player_total_defense} (基础{player_base_defense} / 装备{int(armor_reduction * player_base_defense)})")
+        battle_log.append(f"❤️ 生命值: {player_max_hp} (基础{player_base_hp} / 装备{hp_additional})")
+        battle_log.append(f"⚔️ 攻击力: {player_attack} (基础{player_base_attack} / 装备{attack_additional})")
+        battle_log.append(f"🛡️ 防御力: {player_defense} (基础{player_base_defense} / 装备{defense_additional})")
 
         battle_log.append(f"\n怪物属性:")
-        battle_log.append(f"❤️ 生命值: {monster['hp']}")
-        battle_log.append(f"⚔️ 攻击力: {monster['attack']}")
-        battle_log.append(f"🛡️ 防御力: {monster['defense']}")
+        battle_log.append(f"❤️ 生命值: {monster_max_hp}")
+        battle_log.append(f"⚔️ 攻击力: {monster_attack}")
+        battle_log.append(f"🛡️ 防御力: {monster_defense}")
 
         # 怪物是否狂暴状态
         is_berserk = False
@@ -1001,81 +1003,131 @@ class Game(Plugin):
         round_num = 1
         important_events = []
 
-        # 使用总生命值进行战斗
-        player_hp = player_total_hp
-
         while player_hp > 0 and monster_hp > 0:
-            # 玩家攻击
-            damage = max(1, player_total_attack - monster_defense)
-            final_damage = int(damage * random.uniform(0.8, 1.2))
-            monster_hp -= final_damage
 
-            if round_num <= 5:
+            if round_num <= 4:
                 battle_log.append(f"\n第{round_num}回合")
-                battle_log.append(f"你对{monster['name']}造成 {final_damage} 点伤害")
+
+            # 减伤率为防御值的10%，最高不超过80%
+            monster_damage_reduction = min(monster_defense/1000, 0.8)
+            logger.info(f"怪物减伤: {monster_damage_reduction}")
+            player_damage = int(player_attack * (1- monster_damage_reduction))
+
+            # 伤害修正：确保减伤后伤害至少为1
+            player_damage = max(1, player_damage)
+
+            player_explain_str = ""
+
+            # 应用随机因素
+            rand_val = random.random()
+            if rand_val < 0.2:
+                # 暴击
+                player_final_damage = int(player_damage * random.uniform(1.5, 1.8))
+                player_explain_str = "💥 暴击！"
+            elif rand_val < 0.2:
+                # 失手
+                player_final_damage = max(1, int(player_damage * random.uniform(0.5, 0.7)))
+                player_explain_str = "🤦‍♂️ 失手了！"
+            else:
+                # 正常命中
+                player_final_damage = int(player_damage)
+
+            # 确保最终伤害至少为1点
+            player_final_damage = max(1, player_final_damage)
+
+            # 减少怪物血量
+            monster_hp -= player_final_damage
+
+            # 记录战斗日志（前4回合）
+            if round_num <= 4:
+                battle_log.append(f"{player_explain_str}你对{monster_name}造成 {player_final_damage} 点伤害")
 
             # 检查怪物是否进入狂暴状态
             if not is_berserk and monster_hp < monster_max_hp * 0.3 and random.random() < 0.4:
                 is_berserk = True
-                monster['attack'] = int(monster['attack'] * 1.5)
-                if round_num <= 5:
+                # 提升怪物伤害
+                monster_attack = int(monster_attack * 1.5)
+                if round_num <= 4:
                     battle_log.append(f"💢 {monster['name']}进入狂暴状态！")
                 else:
                     important_events.append(f"第{round_num}回合: {monster['name']}进入狂暴状态！")
 
             # 怪物反击
             if monster_hp > 0:
-                damage_multiplier = random.uniform(0.8, 1.2)
-                base_damage = max(1, monster['attack'] - player_total_defense)
-                monster_damage = int(base_damage * damage_multiplier)
-                player_hp -= monster_damage
+                # 减伤率为防御值的10%，最高不超过80%
+                player_damage_reduction = min(player_defense/1000, 0.8)
+                logger.info(f"玩家减伤: {player_damage_reduction}")
+                monster_damage = int(monster_attack * (1- player_damage_reduction))
+
+                # 确保减伤后伤害至少为1
+                monster_damage = max(1, monster_damage)
+
+                explain_str = ""
+
+                # 应用随机因素
+                rand_val = random.random()
+                if rand_val < 0.1:
+                    # 暴击
+                    monster_final_damage = int(monster_damage * random.uniform(1.5, 1.8))
+                    explain_str = "💥 暴击！"
+                elif rand_val < 0.2:
+                    # 失手
+                    monster_final_damage = max(1, int(monster_damage * random.uniform(0.5, 0.7)))
+                    explain_str = "🤦‍♂️ 失手了！"
+                else:
+                    # 正常命中，应用随机波动
+                    monster_final_damage = int(monster_damage)
+
+                # 减少玩家生命值
+                player_hp -= monster_final_damage
+
+                life_steal = 0
 
                 # 狂暴状态下吸血
                 if is_berserk:
                     life_steal = int(monster_damage * 0.3)
                     monster_hp = min(monster_max_hp, monster_hp + life_steal)
-                    if round_num <= 5:
-                        battle_log.append(f"{monster['name']}对你造成 {monster_damage} 点伤害，并吸取了 {life_steal} 点生命值")
+                    if round_num <= 4:
+                        battle_log.append(f"{explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害，并吸取了 {life_steal} 点生命值")
                 else:
-                    if round_num <= 5:
-                        battle_log.append(f"{monster['name']}对你造成 {monster_damage} 点伤害")
+                    if round_num <= 4:
+                        battle_log.append(f"{explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害")
+
+                logger.debug(f"\n-------------------------------------------------------------\n玩家[{player_name} 减伤：{player_damage_reduction}， 怪物[{monster_name}]减伤：{monster_damage_reduction}\n玩家在第{round_num}回合造成的实际伤害为：{player_final_damage}\n怪物在第{round_num}回合造成的实际伤害为：{monster_final_damage}，吸取血量：{life_steal}\n玩家剩余生命值：{player_hp}，怪物剩余生命值：{monster_hp}")
 
             round_num += 1
 
-        if round_num > 5:
-            battle_log.append(f"\n战斗持续了{round_num}回合")
-            if important_events:
-                battle_log.append("重要事件:")
-                battle_log.extend(important_events)
+        battle_log.append(f"\n战斗持续了{round_num}回合")
+        if important_events:
+            battle_log.append("重要事件:")
+            battle_log.extend(important_events)
 
         if player_hp > 0:
-            # 根据怪物等级增加经验值
-            player_level = int(player.level)
-            monster_level = int(monster['exp'] / 15) # 根据基础经验值估算怪物等级
-            level_diff = monster_level - player_level
-            exp_multiplier = 1.0
+            # 获取怪物基础经验值
+            default_exp = monster['exp']
 
-            if level_diff > 0:
-                exp_multiplier = 1 + (level_diff * 0.2) # 每高一级增加20%经验
-            elif level_diff < 0:
-                exp_multiplier = max(0.2, 1 + (level_diff * 0.1)) # 每低一级减少10%经验,最低20%
+            # 每高一级增加4%经验
+            exp_multiplier = 1 + (player.level * 0.04)
 
-            exp_gain = int(monster['exp'] * exp_multiplier)
-            gold_gain = monster['gold']
+            # 结算经验/金币
+            award_exp = int(default_exp * exp_multiplier)
+            award_gold = int(min(player.level * 0.1, 1) * monster['gold'])
+            actual_gain_gold = player.gold + award_gold
 
-            new_exp = int(float(player.exp)) + exp_gain
-            new_gold = int(player.gold) + gold_gain
+            # 初始化升级标志
             level_up = False
 
-            exp_needed = 100 * (1 + (int(player.level) - 1) * 0.5)
-            if new_exp >= exp_needed:
+            # 计算等级提升所需要的经验值
+            need_exp = int(player.level * 100 * (1 + (player.level - 1)))
+            # 经验值结算（玩家当前经验值 + 本次经验奖励）
+            actual_gain_exp = player.exp + award_exp
+            if actual_gain_exp >= need_exp:
                 new_level = int(player.level) + 1
-                new_exp -= exp_needed
                 level_up = True
 
                 # 使用固定增长值
                 hp_increase = 50      # 每级+50血量
-                attack_increase = 15  # 每级+15攻击
+                attack_increase = 10  # 每级+10攻击
                 defense_increase = 10 # 每级+10防御
 
                 new_max_hp = int(player.max_hp) + hp_increase
@@ -1091,15 +1143,13 @@ class Game(Plugin):
 
             self._update_player_data(user_id, {
                 'hp': str(player_hp),
-                'exp': str(new_exp),
-                'gold': str(new_gold)
+                'exp': str(actual_gain_exp),
+                'gold': str(actual_gain_gold)
             })
 
             battle_log.append(f"\n🎉 战斗胜利")
-            if exp_multiplier != 1.0:
-                battle_log.append(f"经验值倍率: x{exp_multiplier:.1f}")
-            battle_log.append(f"获得 {exp_gain} 经验值")
-            battle_log.append(f"获得 {gold_gain} 金币")
+            battle_log.append(f"获得 {award_exp} 经验值")
+            battle_log.append(f"获得 {award_gold} 金币")
 
             if level_up:
                 battle_log.append(f"\n🆙 升级啦！当前等级 {new_level}")

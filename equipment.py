@@ -162,6 +162,6 @@ class Equipment:
         if not armor:
             return 0.0
 
-        # 将防御值转换为减伤比例,每点防御提供1%减伤,最高80%
-        reduction = min(0.8, int(armor.get('defense', 0)) * 0.01)
+        # 直接返回防御值
+        reduction = int(armor.get('defense', 0))
         return reduction

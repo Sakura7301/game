@@ -24,193 +24,337 @@ class Player:
             rod_durability = json.loads(self.data['rod_durability'])
             cleaned_durability = {rod: durability for rod, durability in rod_durability.items() if int(durability) > 0}
             self.data['rod_durability'] = json.dumps(cleaned_durability)
+
     @property
     def user_id(self) -> str:
-        return str(self.data.get('user_id', ''))
+        try:
+            return str(self.data.get('user_id', ''))
+        except Exception as e:
+            logging.error(f"获取 user_id 时出错: {e}")
+            return ''
 
     @property
     def nickname(self) -> str:
-        return self.data.get('nickname', '')
+        try:
+            return self.data.get('nickname', '')
+        except Exception as e:
+            logging.error(f"获取 nickname 时出错: {e}")
+            return ''
 
     @property
     def gold(self) -> int:
-        return int(self.data.get('gold', 0))
+        try:
+            return int(self.data.get('gold', 0))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 gold 时出错: {e}，返回默认值 0")
+            return 0
 
     @gold.setter
     def gold(self, value: int):
-        self.data['gold'] = str(value)
+        try:
+            self.data['gold'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 gold 时出错: {e}，不更新该值")
 
     @property
     def level(self) -> int:
-        return int(self.data.get('level', 1))
+        try:
+            return int(self.data.get('level', 1))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 level 时出错: {e}，返回默认值 1")
+            return 1
 
     @level.setter
     def level(self, value: int):
-        self.data['level'] = str(value)
+        try:
+            self.data['level'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 level 时出错: {e}，不更新该值")
 
     @property
     def hp(self) -> int:
-        return int(self.data.get('hp', 100))
+        try:
+            return int(self.data.get('hp', 100))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 hp 时出错: {e}，返回默认值 100")
+            return 100
 
     @hp.setter
     def hp(self, value: int):
-        self.data['hp'] = str(value)
+        try:
+            self.data['hp'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 hp 时出错: {e}，不更新该值")
 
     @property
     def max_hp(self) -> int:
-        return int(self.data.get('max_hp', 100))
+        try:
+            return int(self.data.get('max_hp', 100))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 max_hp 时出错: {e}，返回默认值 100")
+            return 100
 
     @max_hp.setter
     def max_hp(self, value: int):
-        self.data['max_hp'] = str(value)
+        try:
+            self.data['max_hp'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 max_hp 时出错: {e}，不更新该值")
 
     @property
     def attack(self) -> int:
-        return int(self.data.get('attack', 10))
+        try:
+            return int(self.data.get('attack', 10))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 attack 时出错: {e}，返回默认值 10")
+            return 10
 
     @attack.setter
     def attack(self, value: int):
-        self.data['attack'] = str(value)
+        try:
+            self.data['attack'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 attack 时出错: {e}，不更新该值")
 
     @property
     def defense(self) -> int:
-        return int(self.data.get('defense', 5))
+        try:
+            return int(self.data.get('defense', 5))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 defense 时出错: {e}，返回默认值 5")
+            return 5
 
     @defense.setter
     def defense(self, value: int):
-        self.data['defense'] = str(value)
+        try:
+            self.data['defense'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 defense 时出错: {e}，不更新该值")
 
     @property
     def exp(self) -> int:
         """获取经验值，确保返回整数"""
         try:
-            # 先转换为浮点数，再转换为整数
             return int(float(self.data.get('exp', '0')))
-        except (ValueError, TypeError):
-            # 如果转换失败，返回默认值0
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 exp 时出错: {e}，返回默认值 0")
             return 0
 
     @exp.setter
     def exp(self, value: int):
         """设置经验值，确保存储为整数字符串"""
         try:
-            # 确保value被转换为整数
             self.data['exp'] = str(int(value))
-        except (ValueError, TypeError):
-            # 如果转换失败，设置为0
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 exp 时出错: {e}，设置为 0")
             self.data['exp'] = '0'
 
     @property
     def inventory(self) -> list:
-        return json.loads(self.data.get('inventory', '[]'))
+        inventory_str = self.data.get('inventory', '[]')
+        try:
+            return json.loads(inventory_str)
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON解析错误: {e}，Inventory内容: {inventory_str}")
+            return []  # 返回一个空列表或其他默认值
+        except Exception as e:
+            logging.error(f"解析 inventory 时出错: {e}，返回默认值 []")
+            return []
 
     @inventory.setter
     def inventory(self, value: list):
-        self.data['inventory'] = json.dumps(value)
+        try:
+            self.data['inventory'] = json.dumps(value)
+        except (TypeError, ValueError) as e:
+            logging.error(f"设置 inventory 时出错: {e}，不更新该值")
 
     @property
     def equipped_weapon(self) -> str:
-        return self.data.get('equipped_weapon', '')
+        try:
+            return self.data.get('equipped_weapon', '')
+        except Exception as e:
+            logging.error(f"获取 equipped_weapon 时出错: {e}")
+            return ''
 
     @equipped_weapon.setter
     def equipped_weapon(self, value: str):
-        self.data['equipped_weapon'] = value
+        try:
+            self.data['equipped_weapon'] = value
+        except Exception as e:
+            logging.error(f"设置 equipped_weapon 时出错: {e}，不更新该值")
 
     @property
     def equipped_armor(self) -> str:
-        return self.data.get('equipped_armor', '')
+        try:
+            return self.data.get('equipped_armor', '')
+        except Exception as e:
+            logging.error(f"获取 equipped_armor 时出错: {e}")
+            return ''
 
     @equipped_armor.setter
     def equipped_armor(self, value: str):
-        self.data['equipped_armor'] = value
+        try:
+            self.data['equipped_armor'] = value
+        except Exception as e:
+            logging.error(f"设置 equipped_armor 时出错: {e}，不更新该值")
 
     @property
     def spouse(self) -> str:
-        return self.data.get('spouse', '')
+        try:
+            return self.data.get('spouse', '')
+        except Exception as e:
+            logging.error(f"获取 spouse 时出错: {e}")
+            return ''
 
     @spouse.setter
     def spouse(self, value: str):
-        self.data['spouse'] = value
+        try:
+            self.data['spouse'] = value
+        except Exception as e:
+            logging.error(f"设置 spouse 时出错: {e}，不更新该值")
 
     @property
     def marriage_proposal(self) -> str:
-        return self.data.get('marriage_proposal', '')
+        try:
+            return self.data.get('marriage_proposal', '')
+        except Exception as e:
+            logging.error(f"获取 marriage_proposal 时出错: {e}")
+            return ''
 
     @marriage_proposal.setter
     def marriage_proposal(self, value: str):
-        self.data['marriage_proposal'] = value
+        try:
+            self.data['marriage_proposal'] = value
+        except Exception as e:
+            logging.error(f"设置 marriage_proposal 时出错: {e}，不更新该值")
 
     @property
     def last_attack(self) -> int:
-        return int(self.data.get('last_attack', 0))
+        try:
+            return int(self.data.get('last_attack', 0))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 last_attack 时出错: {e}，返回默认值 0")
+            return 0
 
     @last_attack.setter
     def last_attack(self, value: int):
-        self.data['last_attack'] = str(value)
+        try:
+            self.data['last_attack'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 last_attack 时出错: {e}，不更新该值")
 
     @property
     def adventure_last_attack(self) -> int:
-        return int(self.data.get('adventure_last_attack', 0))
+        try:
+            return int(self.data.get('adventure_last_attack', 0))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 adventure_last_attack 时出错: {e}，返回默认值 0")
+            return 0
 
     @adventure_last_attack.setter
     def adventure_last_attack(self, value: int):
-        self.data['adventure_last_attack'] = str(value)
+        try:
+            self.data['adventure_last_attack'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 adventure_last_attack 时出错: {e}，不更新该值")
 
     @property
     def last_checkin(self) -> str:
-        return self.data.get('last_checkin', '')
+        try:
+            return self.data.get('last_checkin', '')
+        except Exception as e:
+            logging.error(f"获取 last_checkin 时出错: {e}")
+            return ''
 
     @last_checkin.setter
     def last_checkin(self, value: str):
-        self.data['last_checkin'] = value
+        try:
+            self.data['last_checkin'] = value
+        except Exception as e:
+            logging.error(f"设置 last_checkin 时出错: {e}，不更新该值")
 
     @property
     def last_fishing(self) -> str:
-        return self.data.get('last_fishing', '')
+        try:
+            return self.data.get('last_fishing', '')
+        except Exception as e:
+            logging.error(f"获取 last_fishing 时出错: {e}")
+            return ''
 
     @last_fishing.setter
     def last_fishing(self, value: str):
-        self.data['last_fishing'] = value
+        try:
+            self.data['last_fishing'] = value
+        except Exception as e:
+            logging.error(f"设置 last_fishing 时出错: {e}，不更新该值")
 
     @property
     def rod_durability(self) -> Dict:
-        return json.loads(self.data.get('rod_durability', '{}'))
+        rod_str = self.data.get('rod_durability', '{}')
+        try:
+            return json.loads(rod_str)
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON解析 rod_durability 时出错: {e}，内容: {rod_str}")
+            return {}
+        except Exception as e:
+            logging.error(f"解析 rod_durability 时出错: {e}，返回默认值 {{}}")
+            return {}
 
     @rod_durability.setter
     def rod_durability(self, value: Dict):
-        self.data['rod_durability'] = json.dumps(value)
+        try:
+            self.data['rod_durability'] = json.dumps(value)
+        except (TypeError, ValueError) as e:
+            logging.error(f"设置 rod_durability 时出错: {e}，不更新该值")
 
     @property
     def equipped_fishing_rod(self) -> str:
-        return self.data.get('equipped_fishing_rod', '')
+        try:
+            return self.data.get('equipped_fishing_rod', '')
+        except Exception as e:
+            logging.error(f"获取 equipped_fishing_rod 时出错: {e}")
+            return ''
 
     @equipped_fishing_rod.setter
     def equipped_fishing_rod(self, value: str):
-        self.data['equipped_fishing_rod'] = value
+        try:
+            self.data['equipped_fishing_rod'] = value
+        except Exception as e:
+            logging.error(f"设置 equipped_fishing_rod 时出错: {e}，不更新该值")
 
     @property
-    def last_item_use(self):
+    def last_item_use(self) -> int:
         """获取上次使用物品的时间"""
         try:
             return int(self.data.get('last_item_use', '0'))
-        except (ValueError, TypeError):
-            # 如果转换失败，返回0作为默认值
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 last_item_use 时出错: {e}，返回默认值 0")
             return 0
 
     @last_item_use.setter
     def last_item_use(self, value: int):
         """设置上次使用物品的时间"""
-        self.data['last_item_use'] = str(value)
+        try:
+            self.data['last_item_use'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 last_item_use 时出错: {e}，不更新该值")
 
     @property
     def position(self) -> int:
         """获取玩家位置"""
-        return int(self.data.get('position', '0'))
+        try:
+            return int(self.data.get('position', '0'))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 position 时出错: {e}，返回默认值 0")
+            return 0
 
     @position.setter
     def position(self, value: int):
         """设置玩家位置"""
-        self.data['position'] = str(value)
+        try:
+            self.data['position'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 position 时出错: {e}，不更新该值")
 
     def update_data(self, updates: Dict[str, Any]) -> None:
         """更新玩家数据并保存到文件"""
@@ -604,7 +748,7 @@ class Player:
             f"🏷️ 玩家: {self.nickname}",
             f"💰 金币: {self.gold}",
             f"📊 等级: {current_level}",
-            f"✨ 经验: {self.exp}/{int(current_level * 100 * (1 + (current_level - 1) * 0.5))}",
+            f"✨ 经验: {self.exp}/{int(current_level * 100 * (1 + (current_level - 1)))}",
             f"❤️ 生命值: {self.hp}/{total_max_hp} (基础{self.max_hp} / 装备{hp_bonus})",  # 修改生命值显示
             f"⚔️ 攻击力: {total_attack} (基础{base_attack} / 装备{weapon_bonus})",
             f"🛡️ 防御力: {total_defense} (基础{base_defense} / 装备{armor_bonus})",
