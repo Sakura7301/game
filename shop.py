@@ -16,7 +16,57 @@ class Shop:
             return "您还没注册,请先注册"
 
         # 批量出售
-        if content.startswith("批量出售"):
+        if content.startswith("出售所有物品"):
+            inventory = player.inventory
+            if not inventory:
+                return "背包是空的,没有可以出售的物品"
+            items = self.game.item_system.get_all_items()
+            total_gold = 0
+            sold_items = {}
+            new_inventory = inventory.copy()
+            # 获取当前装备
+            equipped_weapon = player.equipped_weapon
+            equipped_armor = player.equipped_armor
+
+            # 统计每种物品的数量并计算总价值
+            item_counts = Counter(inventory)
+
+            for item_name, count in item_counts.items():
+                if item_name in items:
+                    # 计算可出售数量（排除装备的物品）
+                    sellable_count = count
+                    if item_name == equipped_weapon or item_name == equipped_armor:
+                        sellable_count -= 1
+
+                    if sellable_count > 0:
+                        sold_items[item_name] = sellable_count
+                        sell_price = int(float(items[item_name].get('price', 0)))
+                        total_gold += sell_price * sellable_count
+
+                        # 从背包中移除指定数量的物品
+                        for _ in range(sellable_count):
+                            new_inventory.remove(item_name)
+
+            if not sold_items:
+                return "没有可以出售的物品"
+            
+            actual_gold = int(total_gold * 0.8)
+
+            # 更新玩家数据
+            player.gold = player.gold + actual_gold
+            player.inventory = new_inventory
+
+            # 保存更新后的玩家数据
+            player.save_player_data(self.game.player_file, self.game.STANDARD_FIELDS)
+
+            # 生成出售报告
+            report = "🏪出售所有物品成功:\n"
+            for item_name, amount in sold_items.items():
+                report += f"{item_name} x{amount}\n"
+            report += f"💰基础价值：{total_gold}金币\n♻️回收比例：80%"
+            report += f"共获得 {actual_gold} 金币"
+            return report
+        elif content.startswith("批量出售"):
             inventory = player.inventory
             if not inventory:
                 return "背包是空的,没有可以出售的物品"

@@ -347,6 +347,7 @@ class Game(Plugin):
             "钓鱼": lambda i, n: self.fishing(i),
             "图鉴": lambda i, n: self.show_fish_collection(i, content),
             "出售": lambda i, n: self.shop.sell_item(i, content),
+            "出售所有物品": lambda i, n: self.shop.sell_item(i, content),
             "批量出售": lambda i, n: self.shop.sell_item(i, content),
             "下注": lambda i, n: self.gamble(i, content),
             "外出": lambda i, n: self.go_out(i),
@@ -416,7 +417,8 @@ class Game(Plugin):
 
 交易相关
 ————————————
-💸 出售 [物品名] [数量] - 出售物品(原价80%)
+💸 出售 [物品名] [数量] - 出售物品
+🏪 出售所有物品 - 出售背包中的所有物品(武器和防具除外)
 📦 批量出售 [类型] - 批量出售背包物品
 🎲 下注 [大/小/豹子/顺子] 数额 - 按照指定类型押注进行下注
 
