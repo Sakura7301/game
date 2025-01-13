@@ -49,7 +49,7 @@ class Shop:
 
             if not sold_items:
                 return "没有可以出售的物品"
-            
+
             actual_gold = int(total_gold * 0.8)
 
             # 更新玩家数据
@@ -63,7 +63,8 @@ class Shop:
             report = "🏪出售所有物品成功:\n"
             for item_name, amount in sold_items.items():
                 report += f"{item_name} x{amount}\n"
-            report += f"💰基础价值：{total_gold}金币\n♻️回收比例：80%"
+            report += f"💰基础价值：{total_gold}金币\n"
+            report += f"♻️回收比例：80%\n"
             report += f"共获得 {actual_gold} 金币"
             return report
         elif content.startswith("批量出售"):
