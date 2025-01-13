@@ -6,6 +6,7 @@ import time
 import random
 import random
 import plugins
+import shutil
 import datetime
 import threading
 from plugins import *
@@ -35,7 +36,7 @@ class Game(Plugin):
         'user_id', 'nickname', 'gold', 'level', 'last_checkin',
         'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
         'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
-        'last_item_use', 'spouse', 'marriage_proposal', 'last_attack', 'adventure_last_attack',
+        'last_item_use', 'spouse', 'marriage_proposal', 'challenge_proposal', 'last_attack', 'adventure_last_attack',
         'position'
     ]
 
@@ -157,7 +158,7 @@ class Game(Plugin):
             'user_id', 'nickname', 'gold', 'level', 'last_checkin',
             'inventory', 'hp', 'max_hp', 'attack', 'defense', 'exp',
             'last_fishing', 'rod_durability', 'equipped_weapon', 'equipped_armor',
-            'last_item_use', 'spouse', 'marriage_proposal', 'last_attack', 'adventure_last_attack'
+            'last_item_use', 'spouse', 'marriage_proposal', 'challenge_proposal', 'last_attack', 'adventure_last_attack'
         ]
 
         # 默认值设置
@@ -176,6 +177,7 @@ class Game(Plugin):
             'last_item_use': '0',
             'spouse': '',
             'marriage_proposal': '',
+            'challenge_proposal': '',
             'last_attack': '0',
             'adventure_last_attack': '0'
         }
@@ -232,7 +234,6 @@ class Game(Plugin):
                 # 创建备份
                 backup_file = f"{self.player_file}.bak"
                 if os.path.exists(self.player_file):
-                    import shutil
                     shutil.copy2(self.player_file, backup_file)
 
     def _load_reminders(self):
@@ -357,7 +358,9 @@ class Game(Plugin):
             "同意求婚": lambda i, n: self.accept_marriage(i),
             "拒绝求婚": lambda i, n: self.reject_marriage(i),
             "离婚": lambda i, n: self.divorce(i),
-            "攻击": lambda i, n: self.attack_player(i, content, msg),
+            "挑战": lambda i, n: self.attack_player(i, content, msg),
+            "同意挑战": lambda i, n: self.accept_challenge(i),
+            "拒绝挑战": lambda i, n: self.refuse_challenge(i),
             "开机": lambda i, n: self.toggle_game_system(i, 'start'),
             "关机": lambda i, n: self.toggle_game_system(i, 'stop'),
             "充值": lambda i, n: self.toggle_recharge(i, content),
@@ -393,7 +396,6 @@ class Game(Plugin):
                 e_context.action = EventAction.CONTINUE
 
     def game_help(self):
-        import time
         return """
 🎮 游戏指令大全 🎮
 
@@ -424,7 +426,9 @@ class Game(Plugin):
 📖 图鉴 - 查看鱼类图鉴
 🌄 外出 - 外出开始大富翁游戏
 🤺 冒险 - 冒险打怪升级
-👊 攻击 [@用户] - 攻击其他玩家
+👊 挑战 [@用户] - 向其他玩家发起挑战
+👌 同意挑战 - 同意其他玩家的挑战请求
+🫸 拒绝挑战 - 拒绝其他玩家的挑战请求
 🗺️ 地图 - 查看游戏地图
 
 地产相关
@@ -529,7 +533,7 @@ class Game(Plugin):
 
         if last_fishing_str:
             last_fishing = datetime.datetime.strptime(last_fishing_str, '%Y-%m-%d %H:%M:%S')
-            cooldown = datetime.timedelta(minutes=1)  # 3分钟冷却时间
+            cooldown = datetime.timedelta(minutes=1)  # 1分钟冷却时间
             if now - last_fishing < cooldown:
                 remaining = cooldown - (now - last_fishing)
                 return f"钓鱼冷却中，还需等待 {remaining.seconds} 秒"
@@ -1263,7 +1267,6 @@ class Game(Plugin):
                 logger.warning(f"用户 {user_id} 未注册，无法签到")
                 return "您还没注册,请先注册 "
 
-            import datetime
             today = datetime.datetime.now().strftime('%Y-%m-%d')
             logger.info(f"当前日期: {today}")
 
@@ -1590,13 +1593,228 @@ class Game(Plugin):
 
         return f"您已经与所有配偶离婚"
 
-    def attack_player(self, user_id, content, msg: ChatMessage):
-        """强制攻击其他玩家"""
-        if not msg.is_group:
-            return "只能在群聊中使用攻击功能"
+    def pvp_combat(self, player_1: Player, player_2: Player) -> str:
+        """PVP战斗"""
+        # 获取攻击玩家属性
+        player_1_base_hp = int(player_1.hp)
+        player_1_base_attack = int(player_1.attack)
+        player_1_base_defense = int(player_1.defense)
+
+        # 获取攻击玩家装备加成
+        player_1_attack_additional = self.equipment_system.get_weapon_bonus(player_1)
+        player_1_defense_additional = self.equipment_system.get_armor_reduction(player_1)
 
         # 获取物品信息
         items_info = self.item_system.get_all_items()  # 添加这行来获取物品信息
+
+        # 获取攻击玩家护甲提供的生命值加成
+        player_1_hp_additional = 0
+        if player_1.equipped_armor:
+            items_info = self.item_system.get_all_items()
+            if player_1.equipped_armor in items_info:
+                armor_info = items_info[player_1.equipped_armor]
+                player_1_hp_additional = int(armor_info.get('hp', 0))
+
+        # 获取目标玩家基础属性
+        player_2_base_hp = int(player_2.hp)
+        player_2_base_attack = int(player_2.attack)
+        player_2_base_defense = int(player_2.defense)
+
+        # 获取目标玩家装备加成
+        player_2_attack_additional = self.equipment_system.get_weapon_bonus(player_2)
+        player_2_defense_additional = self.equipment_system.get_armor_reduction(player_2)
+
+        # 获取目标玩家护甲提供的生命值加成
+        player_2_hp_additional = 0
+        if player_2.equipped_armor:
+            items_info = self.item_system.get_all_items()
+            if player_2.equipped_armor in items_info:
+                armor_info = items_info[player_2.equipped_armor]
+                player_2_hp_additional = int(armor_info.get('hp', 0))
+
+        # 攻击玩家属性
+        player_1_hp = player_1_base_hp + player_1_hp_additional
+        player_1_max_hp = player_1_base_hp + player_1_hp_additional
+        player_1_attack = player_1_base_attack + player_1_attack_additional
+        player_1_defense = player_1_base_defense + player_1_defense_additional
+        player_1_name = player_1.nickname
+
+        # 目标玩家属性
+        player_2_hp = player_2_base_hp + player_2_hp_additional
+        player_2_max_hp = player_2_base_hp + player_2_hp_additional
+        player_2_attack = player_2_base_attack + player_2_attack_additional
+        player_2_defense = player_2_base_defense + player_2_defense_additional
+        player_2_name = player_2.nickname
+
+        # 更新战斗日志显示
+        battle_log = [
+            "同意挑战！\n⚔️ PVP战斗开始 ⚔️\n",
+            f"[{player_1_name}]",
+            f"❤️ 生命: {player_1_max_hp} (基础{player_1_hp} / 装备{player_1_hp_additional})",
+            f"⚔️ 攻击力: {player_1_attack} (基础{player_1_base_attack} / 装备{player_1_attack_additional})",
+            f"🛡️ 防御力: {player_1_defense} (基础{player_1_base_defense} / 装备{int(player_1_defense_additional)})\n",
+            f"VS\n",
+            f"[{player_2_name}]",
+            f"❤️ 生命: {player_2_max_hp} (基础{player_2_hp} / 装备{player_2_hp_additional})",
+            f"⚔️ 攻击力: {player_2_attack} (基础{player_2_base_attack} / 装备{player_2_attack_additional})",
+            f"🛡️ 防御力: {player_2_defense} (基础{player_2_base_defense} / 装备{int(player_2_defense_additional)})\n"
+        ]
+
+        # 战斗逻辑
+        round_num = 1
+        while player_1_hp > 0 and player_2_hp > 0:
+
+            # 减伤率为防御值的10%，最高不超过80%
+            player_2_damage_reduction = min(player_2_defense/1000, 0.8)
+            player_1_damage = int(player_1_attack * (1- player_2_damage_reduction))
+
+            # 伤害修正：确保减伤后伤害至少为1
+            player_1_damage = max(1, player_1_damage)
+
+            player_1_explain_str = ""
+
+            # 应用随机因素
+            rand_val = random.random()
+            if rand_val < 0.2:
+                # 暴击
+                player_1_final_damage = int(player_1_damage * random.uniform(1.5, 1.8))
+                player_1_explain_str = "💥暴击！"
+            elif rand_val < 0.2:
+                # 失手
+                player_1_final_damage = max(1, int(player_1_damage * random.uniform(0.5, 0.7)))
+                player_1_explain_str = "🤦‍♂️失手了！"
+            else:
+                # 正常命中
+                player_1_final_damage = int(player_1_damage)
+
+            # 确保最终伤害至少为1点
+            player_1_final_damage = max(1, player_1_final_damage)
+
+            # 减少目标玩家血量
+            player_2_hp -= player_1_final_damage
+
+            # 减伤率为防御值的10%，最高不超过80%
+            player_1_damage_reduction = min(player_1_defense/1000, 0.8)
+            player_2_damage = int(player_2_attack * (1- player_1_damage_reduction))
+
+            # 伤害修正：确保减伤后伤害至少为1
+            player_2_damage = max(1, player_2_damage)
+
+            player_2_explain_str = ""
+
+            # 应用随机因素
+            rand_val = random.random()
+            if rand_val < 0.2:
+                # 暴击
+                player_2_final_damage = int(player_2_damage * random.uniform(1.5, 1.8))
+                player_2_explain_str = "💥暴击！"
+            elif rand_val < 0.2:
+                # 失手
+                player_2_final_damage = max(1, int(player_2_damage * random.uniform(0.5, 0.7)))
+                player_2_explain_str = "🤦‍♂️失手了！"
+            else:
+                # 正常命中
+                player_2_final_damage = int(player_2_damage)
+
+            # 确保最终伤害至少为1点
+            player_2_final_damage = max(1, player_2_final_damage)
+
+            # 减少攻击玩家血量
+            player_1_hp -= player_2_final_damage
+
+            # 记录战斗日志（前4回合）
+            if round_num <= 4:
+                battle_log.append(f"\n第{round_num}回合")
+                battle_log.append(f"{player_1_explain_str}{player_1_name}对{player_2_name}造成 {player_1_final_damage} 点伤害")
+                battle_log.append(f"{player_2_explain_str}{player_2_name}对{player_1_name}造成 {player_2_final_damage} 点伤害")
+
+            round_num += 1
+            if round_num > 10:  # 限制最大回合数
+                break
+
+        # 计算惩罚金币比例(回合数越多惩罚越少)
+        penalty_rate = max(0.2, 0.6 - (round_num - 1) * 0.05)  # 每回合减少5%,最低20%
+        battle_log.append("\n战斗结果:")
+
+        # 直接使用inventory列表
+        player_1_items = None
+        player_2_items = None
+        if player_1.inventory:
+            player_1_items = player_1.inventory
+        if player_2.inventory:
+            player_2_items = player_2.inventory
+
+        if player_1_hp <= 0:
+            # 目标玩家胜利
+            # 扣除金币
+            player_1_gold = int(player_1.gold)
+            penalty_gold = int(player_1_gold * penalty_rate)
+            new_player_1_gold = player_1_gold - penalty_gold
+            new_player_2_gold = int(player_2.gold) + penalty_gold
+
+            # 随机赔付一件物品给对方
+            lost_item = None
+            if player_1_items:
+                lost_item = random.choice(player_1_items)
+                player_1_items.remove(lost_item)
+                player_2_items.extend([lost_item] * 1)
+
+            # 更新数据
+            self._update_player_data(player_1.user_id, {
+                'hp': '0',
+                'gold': str(new_player_1_gold),
+                'inventory': player_1_items,  # _update_player_data会处理列表到JSON的转换
+            })
+            self._update_player_data(player_2.user_id, {  # 这里改为使用user_id
+                'hp': str(player_2_hp),
+                'gold': str(new_player_2_gold),
+                'inventory': player_2_items,  # _update_player_data会处理列表到JSON的转换
+            })
+
+            result = f"{player_2.nickname} 获胜!\n{player_1.nickname} 赔偿 {penalty_gold} 金币"
+            if lost_item:
+                result += f"\n{player_1_name} 的 {lost_item} 被 {player_2_name} 夺走！"
+
+        else:
+            # 攻击玩家胜利
+            # 扣除金币
+            player_2_gold = int(player_2.gold)
+            penalty_gold = int(player_2_gold * penalty_rate)
+            new_player_2_gold = player_2_gold - penalty_gold
+            new_player_1_gold = int(player_1.gold) + penalty_gold
+
+            # 随机赔付一件物品给对方
+            player_2_items = player_2.inventory  # 直接使用inventory列表
+            lost_item = None
+            if player_2_items:
+                lost_item = random.choice(player_2_items)
+                player_2_items.remove(lost_item)
+                player_1_items.extend([lost_item] * 1)
+
+            # 更新数据
+            self._update_player_data(player_2.user_id, {  # 使用player_2_id而不是nickname
+                'hp': '0',
+                'gold': str(new_player_2_gold),
+                'inventory': player_2_items,  # _update_player_data会处理列表到JSON的转换
+            })
+
+            self._update_player_data(player_1.user_id, {
+                'hp': str(player_1_hp),
+                'gold': str(new_player_1_gold),
+                'inventory': player_1_items
+            })
+
+            result = f"{player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币"
+            if lost_item:
+                result += f"\n{player_2_name} 的 {lost_item} 被 {player_1_name} 夺走！"
+
+        battle_log.append(result)
+        return "\n".join(battle_log)
+
+    def attack_player(self, user_id, content, msg: ChatMessage):
+        """ PVP 挑战其他玩家 """
+        if not msg.is_group:
+            return "只能在群聊中使用攻击功能"
 
         # 解析命令参数
         parts = content.split()
@@ -1624,230 +1842,68 @@ class Game(Plugin):
         if target.hp == 0:
             return "对方生命值为0，做个人吧，孩子！"
 
-        # 检查冷却时间
-        import time
-        current_time = int(time.time())
-        last_attack = int(attacker.last_attack)
-        cooldown = 300  # 5分钟冷却
+        if target.challenge_proposal:
+            return "对方已经有一个待处理的挑战请求"
 
-        if (current_time - last_attack) < cooldown:
-            remaining = cooldown - (current_time - last_attack)
-            return f"攻击冷却中，还需等待 {remaining} 秒"
+        # 更新目标玩家的挑战请求，使用挑战者的user_id
+        self._update_player_data(target.user_id, {
+            'challenge_proposal': user_id
+        })
 
-        # 获取攻击玩家属性
-        attacker_base_hp = int(attacker.hp)
-        attacker_base_attack = int(attacker.attack)
-        attacker_base_defense = int(attacker.defense)
+        return f"您向 {target_name} 发起了挑战请求，等待对方回应"
 
-        # 获取攻击玩家装备加成
-        attacker_attack_additional = self.equipment_system.get_weapon_bonus(attacker)
-        attacker_defense_additional = self.equipment_system.get_armor_reduction(attacker)
+    def refuse_challenge(self, user_id):
+        """拒绝挑战"""
+        player = self.get_player(user_id)
+        if not player:
+            return "您还没有注册游戏"
 
-        # 获取攻击玩家护甲提供的生命值加成
-        attacker_hp_additional = 0
-        if attacker.equipped_armor:
-            items_info = self.item_system.get_all_items()
-            if attacker.equipped_armor in items_info:
-                armor_info = items_info[attacker.equipped_armor]
-                attacker_hp_additional = int(armor_info.get('hp', 0))
+        proposal = player.challenge_proposal
+        if not proposal:
+            return "虽然但是，并没有人挑战你啊，兄嘚~"
 
-        # 获取目标玩家基础属性
-        target_base_hp = int(target.hp)
-        target_base_attack = int(target.attack)
-        target_base_defense = int(target.defense)
-
-        # 获取目标玩家装备加成
-        target_attack_additional = self.equipment_system.get_weapon_bonus(target)
-        target_defense_additional = self.equipment_system.get_armor_reduction(target)
-
-        # 获取目标玩家护甲提供的生命值加成
-        target_hp_additional = 0
-        if target.equipped_armor:
-            items_info = self.item_system.get_all_items()
-            if target.equipped_armor in items_info:
-                armor_info = items_info[target.equipped_armor]
-                target_hp_additional = int(armor_info.get('hp', 0))
-
-        # 攻击玩家属性
-        attacker_hp = attacker_base_hp + attacker_hp_additional
-        attacker_max_hp = attacker_base_hp + attacker_hp_additional
-        attacker_attack = attacker_base_attack + attacker_attack_additional
-        attacker_defense = attacker_base_defense + attacker_defense_additional
-        attacker_name = attacker.nickname
-
-        # 目标玩家属性
-        target_hp = target_base_hp + target_hp_additional
-        target_max_hp = target_base_hp + target_hp_additional
-        target_attack = target_base_attack + target_attack_additional
-        target_defense = target_base_defense + target_defense_additional
-        target_name = target.nickname
-
-        # 更新战斗日志显示
-        battle_log = [
-            "⚔️ PVP战斗开始 ⚔️\n",
-            f"[{attacker_name}]",
-            f"❤️ 生命: {attacker_max_hp} (基础{attacker_hp} / 装备{attacker_hp_additional})",
-            f"⚔️ 攻击力: {attacker_attack} (基础{attacker_base_attack} / 装备{attacker_attack_additional})",
-            f"🛡️ 防御力: {attacker_defense} (基础{attacker_base_defense} / 装备{int(attacker_defense_additional)})\n",
-            f"VS\n",
-            f"[{target_name}]",
-            f"❤️ 生命: {target_max_hp} (基础{target_hp} / 装备{target_hp_additional})",
-            f"⚔️ 攻击力: {target_attack} (基础{target_base_attack} / 装备{target_attack_additional})",
-            f"🛡️ 防御力: {target_defense} (基础{target_base_defense} / 装备{int(target_defense_additional)})\n"
-        ]
-
-        # 战斗逻辑
-        round_num = 1
-        while attacker_hp > 0 and target_hp > 0:
-
-            # 减伤率为防御值的10%，最高不超过80%
-            target_damage_reduction = min(target_defense/1000, 0.8)
-            attacker_damage = int(attacker_attack * (1- target_damage_reduction))
-
-            # 伤害修正：确保减伤后伤害至少为1
-            attacker_damage = max(1, attacker_damage)
-
-            attacker_explain_str = ""
-
-            # 应用随机因素
-            rand_val = random.random()
-            if rand_val < 0.2:
-                # 暴击
-                attacker_final_damage = int(attacker_damage * random.uniform(1.5, 1.8))
-                attacker_explain_str = "💥暴击！"
-            elif rand_val < 0.2:
-                # 失手
-                attacker_final_damage = max(1, int(attacker_damage * random.uniform(0.5, 0.7)))
-                attacker_explain_str = "🤦‍♂️失手了！"
-            else:
-                # 正常命中
-                attacker_final_damage = int(attacker_damage)
-
-            # 确保最终伤害至少为1点
-            attacker_final_damage = max(1, attacker_final_damage)
-
-            # 减少目标玩家血量
-            target_hp -= attacker_final_damage
-
-            # 减伤率为防御值的10%，最高不超过80%
-            attacker_damage_reduction = min(attacker_defense/1000, 0.8)
-            target_damage = int(target_attack * (1- attacker_damage_reduction))
-
-            # 伤害修正：确保减伤后伤害至少为1
-            target_damage = max(1, target_damage)
-
-            target_explain_str = ""
-
-            # 应用随机因素
-            rand_val = random.random()
-            if rand_val < 0.2:
-                # 暴击
-                target_final_damage = int(target_damage * random.uniform(1.5, 1.8))
-                target_explain_str = "💥暴击！"
-            elif rand_val < 0.2:
-                # 失手
-                target_final_damage = max(1, int(target_damage * random.uniform(0.5, 0.7)))
-                target_explain_str = "🤦‍♂️失手了！"
-            else:
-                # 正常命中
-                target_final_damage = int(target_damage)
-
-            # 确保最终伤害至少为1点
-            target_final_damage = max(1, target_final_damage)
-
-            # 减少攻击玩家血量
-            attacker_hp -= target_final_damage
-
-            # 记录战斗日志（前4回合）
-            if round_num <= 4:
-                battle_log.append(f"\n第{round_num}回合")
-                battle_log.append(f"{attacker_explain_str}{attacker_name}对{target_name}造成 {attacker_final_damage} 点伤害")
-                battle_log.append(f"{target_explain_str}{target_name}对{attacker_name}造成 {target_final_damage} 点伤害")
-
-            round_num += 1
-            if round_num > 10:  # 限制最大回合数
-                break
-
-        # 计算惩罚金币比例(回合数越多惩罚越少)
-        penalty_rate = max(0.2, 0.6 - (round_num - 1) * 0.05)  # 每回合减少5%,最低20%
-        battle_log.append("\n战斗结果:")
-
-        # 直接使用inventory列表
-        attacker_items = None
-        target_items = None
-        if attacker.inventory:
-            attacker_items = attacker.inventory
-        if target.inventory:
-            target_items = target.inventory
-
-        if attacker_hp <= 0:
-            # 目标玩家胜利
-            # 扣除金币
-            attacker_gold = int(attacker.gold)
-            penalty_gold = int(attacker_gold * penalty_rate)
-            new_attacker_gold = attacker_gold - penalty_gold
-            new_target_gold = int(target.gold) + penalty_gold
-
-            # 随机赔付一件物品给对方
-            lost_item = None
-            if attacker_items:
-                lost_item = random.choice(attacker_items)
-                attacker_items.remove(lost_item)
-                target_items.extend([lost_item] * 1)
-
-            # 更新数据
+        # 使用昵称获取挑战者信息
+        proposer = self.get_player(proposal)
+        if not proposer:
+            # 清除无效的挑战请求
             self._update_player_data(user_id, {
-                'hp': '0',
-                'gold': str(new_attacker_gold),
-                'inventory': attacker_items,  # _update_player_data会处理列表到JSON的转换
-                'last_attack': str(current_time)
+                'challenge_proposal': ''
             })
-            self._update_player_data(target.user_id, {  # 这里改为使用user_id
-                'hp': str(target_hp),
-                'gold': str(new_target_gold),
-                'inventory': target_items,  # _update_player_data会处理列表到JSON的转换
-            })
+            return "挑战者信息不存在或已注销账号"
 
-            result = f"{target.nickname} 获胜!\n{attacker.nickname} 赔偿 {penalty_gold} 金币"
-            if lost_item:
-                result += f"\n{attacker_name} 的 {lost_item} 被 {target_name} 夺走！"
+        # 更新自身的挑战者
+        self._update_player_data(user_id, {
+            'challenge_proposal': ''
+        })
 
-        else:
-            # 攻击玩家胜利
-            # 扣除金币
-            target_gold = int(target.gold)
-            penalty_gold = int(target_gold * penalty_rate)
-            new_target_gold = target_gold - penalty_gold
-            new_attacker_gold = int(attacker.gold) + penalty_gold
+        return f"您拒绝了 {proposal} 的挑战请求"
 
-            # 随机赔付一件物品给对方
-            target_items = target.inventory  # 直接使用inventory列表
-            lost_item = None
-            if target_items:
-                lost_item = random.choice(target_items)
-                target_items.remove(lost_item)
-                attacker_items.extend([lost_item] * 1)
+    def accept_challenge(self, user_id):
+        """同意挑战"""
+        player = self.get_player(user_id)
+        if not player:
+            return "您还没有注册游戏"
 
-            # 更新数据
-            self._update_player_data(target.user_id, {  # 使用target_id而不是nickname
-                'hp': '0',
-                'gold': str(new_target_gold),
-                'inventory': target_items,  # _update_player_data会处理列表到JSON的转换
-            })
+        proposal = player.challenge_proposal
+        if not proposal:
+            return "您没有待处理的挑战请求"
 
+        # 使用昵称获取挑战者信息
+        proposer = self.get_player(proposal)
+        if not proposer:
+            # 清除无效的挑战请求
             self._update_player_data(user_id, {
-                'hp': str(attacker_hp),
-                'gold': str(new_attacker_gold),
-                'last_attack': str(current_time),
-                'inventory': attacker_items
+                'challenge_proposal': ''
             })
+            return "挑战者信息不存在或已注销账号"
 
-            result = f"{attacker_name} 获胜!\n{target.nickname} 赔偿 {penalty_gold} 金币"
-            if lost_item:
-                result += f"\n{target_name} 的 {lost_item} 被 {attacker_name} 夺走！"
+        # 更新自身的挑战者
+        self._update_player_data(user_id, {
+            'challenge_proposal': ''
+        })
 
-        battle_log.append(result)
-        return "\n".join(battle_log)
+        # 开始pvp战斗
+        return self.pvp_combat(proposer, player)
 
     def _update_player_data(self, user_id, updates: dict):
         """更新玩家数据

@@ -1,11 +1,12 @@
+import os
+import csv
 import json
 import time
-from typing import Dict, Any, Optional
-import csv
-import logging
-import os
 import shutil
+import logging
 from datetime import datetime
+from collections import Counter
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +230,21 @@ class Player:
             logging.error(f"设置 marriage_proposal 时出错: {e}，不更新该值")
 
     @property
+    def challenge_proposal(self) -> str:
+        try:
+            return self.data.get('challenge_proposal', '')
+        except Exception as e:
+            logging.error(f"获取 challenge_proposal 时出错: {e}")
+            return ''
+
+    @challenge_proposal.setter
+    def challenge_proposal(self, value: str):
+        try:
+            self.data['challenge_proposal'] = value
+        except Exception as e:
+            logging.error(f"设置 challenge_proposal 时出错: {e}，不更新该值")
+
+    @property
     def last_attack(self) -> int:
         try:
             return int(self.data.get('last_attack', 0))
@@ -416,6 +432,7 @@ class Player:
             'last_item_use': '0',
             'spouse': '',
             'marriage_proposal': '',
+            'challenge_proposal': '',
             'last_attack': '0',
             'adventure_last_attack': '0',
             'position': '0'
@@ -428,7 +445,6 @@ class Player:
             return "背包是空的"
 
         # 统计物品数量
-        from collections import Counter
         item_counts = Counter(self.inventory)
 
         # 按类型分类物品

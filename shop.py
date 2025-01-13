@@ -1,6 +1,6 @@
+import csv
 import json
 from common.log import logger
-import csv
 from collections import Counter
 
 

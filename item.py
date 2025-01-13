@@ -1,8 +1,8 @@
+import os
 import csv
 import json
 from typing import Dict, Any, Optional
 from common.log import logger
-import os
 
 
 class Item:

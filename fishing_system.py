@@ -4,6 +4,7 @@ import json
 import datetime
 import os
 from common.log import logger
+from collections import Counter
 
 
 class FishingSystem:
@@ -135,7 +136,6 @@ class FishingSystem:
         inventory = player.inventory
 
         # 统计鱼的数量
-        from collections import Counter
         fish_counts = Counter(inventory)
 
         # 读取所有鱼类信息
