@@ -33,6 +33,10 @@ class Shop:
 
             for item_name, count in item_counts.items():
                 if item_name in items:
+                    item_type = items[item_name].get('type')
+                    if item_type == "fishing_rod" or item_type == 'consumable':
+                        # 默认不出售鱼竿
+                        continue
                     # 计算可出售数量（排除装备的物品）
                     sellable_count = count
                     if item_name == equipped_weapon or item_name == equipped_armor:
