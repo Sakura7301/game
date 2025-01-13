@@ -1010,7 +1010,7 @@ class Game(Plugin):
 
             # 减伤率为防御值的10%，最高不超过80%
             monster_damage_reduction = min(monster_defense/1000, 0.8)
-            logger.info(f"怪物减伤: {monster_damage_reduction}")
+            logger.debug(f"怪物减伤: {monster_damage_reduction}")
             player_damage = int(player_attack * (1- monster_damage_reduction))
 
             # 伤害修正：确保减伤后伤害至少为1
@@ -1023,11 +1023,11 @@ class Game(Plugin):
             if rand_val < 0.2:
                 # 暴击
                 player_final_damage = int(player_damage * random.uniform(1.5, 1.8))
-                player_explain_str = "💥 暴击！"
+                player_explain_str = "💥暴击！"
             elif rand_val < 0.2:
                 # 失手
                 player_final_damage = max(1, int(player_damage * random.uniform(0.5, 0.7)))
-                player_explain_str = "🤦‍♂️ 失手了！"
+                player_explain_str = "🤦‍♂️失手了！"
             else:
                 # 正常命中
                 player_final_damage = int(player_damage)
@@ -1056,7 +1056,7 @@ class Game(Plugin):
             if monster_hp > 0:
                 # 减伤率为防御值的10%，最高不超过80%
                 player_damage_reduction = min(player_defense/1000, 0.8)
-                logger.info(f"玩家减伤: {player_damage_reduction}")
+                logger.debug(f"玩家减伤: {player_damage_reduction}")
                 monster_damage = int(monster_attack * (1- player_damage_reduction))
 
                 # 确保减伤后伤害至少为1
@@ -1069,11 +1069,11 @@ class Game(Plugin):
                 if rand_val < 0.1:
                     # 暴击
                     monster_final_damage = int(monster_damage * random.uniform(1.5, 1.8))
-                    explain_str = "💥 暴击！"
+                    explain_str = "💥暴击！"
                 elif rand_val < 0.2:
                     # 失手
                     monster_final_damage = max(1, int(monster_damage * random.uniform(0.5, 0.7)))
-                    explain_str = "🤦‍♂️ 失手了！"
+                    explain_str = "🤦‍♂️失手了！"
                 else:
                     # 正常命中，应用随机波动
                     monster_final_damage = int(monster_damage)
@@ -1616,7 +1616,13 @@ class Game(Plugin):
 
         # 不能攻击自己
         if attacker.nickname == target.nickname:
-            return "不能攻击自己"
+            return "我知道你很勇，但是自己打自己这种事未免过于抽象。。。"
+
+        if attacker.hp == 0:
+            return "你的生命值为0，即便如此，你也想要起舞吗？"
+
+        if target.hp == 0:
+            return "对方生命值为0，做个人吧，孩子！"
 
         # 检查冷却时间
         import time
@@ -1628,100 +1634,135 @@ class Game(Plugin):
             remaining = cooldown - (current_time - last_attack)
             return f"攻击冷却中，还需等待 {remaining} 秒"
 
-        # 获取双方属性
-        attacker_hp = int(attacker.hp)
-        attacker_attack = int(attacker.attack)
-        attacker_defense = int(attacker.defense)
+        # 获取攻击玩家属性
+        attacker_base_hp = int(attacker.hp)
+        attacker_base_attack = int(attacker.attack)
+        attacker_base_defense = int(attacker.defense)
 
-        target_hp = int(target.hp)
-        target_attack = int(target.attack)
-        target_defense = int(target.defense)
+        # 获取攻击玩家装备加成
+        attacker_attack_additional = self.equipment_system.get_weapon_bonus(attacker)
+        attacker_defense_additional = self.equipment_system.get_armor_reduction(attacker)
 
-        # 获取双方配偶信息
-        attacker_spouses = []
-        if attacker.spouse:
-            for spouse_name in attacker.spouse.split(','):
-                if spouse_name:
-                    spouse = self.get_player(spouse_name)
-                    if spouse:
-                        attacker_spouses.append(spouse)
+        # 获取攻击玩家护甲提供的生命值加成
+        attacker_hp_additional = 0
+        if attacker.equipped_armor:
+            items_info = self.item_system.get_all_items()
+            if attacker.equipped_armor in items_info:
+                armor_info = items_info[attacker.equipped_armor]
+                attacker_hp_additional = int(armor_info.get('hp', 0))
 
-        target_spouses = []
-        if target.spouse:
-            for spouse_name in target.spouse.split(','):
-                if spouse_name:
-                    spouse = self.get_player(spouse_name)
-                    if spouse:
-                        target_spouses.append(spouse)
+        # 获取目标玩家基础属性
+        target_base_hp = int(target.hp)
+        target_base_attack = int(target.attack)
+        target_base_defense = int(target.defense)
 
-        # 获取装备加成
-        attacker_weapon_bonus = self.equipment_system.get_weapon_bonus(attacker)
-        attacker_armor_bonus = self.equipment_system.get_armor_reduction(attacker)
-        target_weapon_bonus = self.equipment_system.get_weapon_bonus(target)
-        target_armor_bonus = self.equipment_system.get_armor_reduction(target)
+        # 获取目标玩家装备加成
+        target_attack_additional = self.equipment_system.get_weapon_bonus(target)
+        target_defense_additional = self.equipment_system.get_armor_reduction(target)
 
-        # 获取护甲提供的生命值加成
-        attacker_hp_bonus = 0
-        target_hp_bonus = 0
+        # 获取目标玩家护甲提供的生命值加成
+        target_hp_additional = 0
+        if target.equipped_armor:
+            items_info = self.item_system.get_all_items()
+            if target.equipped_armor in items_info:
+                armor_info = items_info[target.equipped_armor]
+                target_hp_additional = int(armor_info.get('hp', 0))
 
-        # 计算攻击者护甲生命值加成
-        if attacker.equipped_armor and attacker.equipped_armor in items_info:
-            armor_info = items_info[attacker.equipped_armor]
-            attacker_hp_bonus = int(armor_info.get('hp', 0))
+        # 攻击玩家属性
+        attacker_hp = attacker_base_hp + attacker_hp_additional
+        attacker_max_hp = attacker_base_hp + attacker_hp_additional
+        attacker_attack = attacker_base_attack + attacker_attack_additional
+        attacker_defense = attacker_base_defense + attacker_defense_additional
+        attacker_name = attacker.nickname
 
-        # 计算目标护甲生命值加成
-        if target.equipped_armor and target.equipped_armor in items_info:
-            target_armor_info = items_info[target.equipped_armor]
-            target_hp_bonus = int(target_armor_info.get('hp', 0))
-
-        # 计算实际生命值
-        attacker_total_hp = attacker_hp + attacker_hp_bonus
-        target_total_hp = target_hp + target_hp_bonus
-
-        # 计算总攻击力和防御力
-        attacker_total_attack = attacker_attack + attacker_weapon_bonus
-        attacker_total_defense = attacker_defense + int(attacker_armor_bonus * attacker_defense)
-        target_total_attack = target_attack + target_weapon_bonus
-        target_total_defense = target_defense + int(target_armor_bonus * target_defense)
+        # 目标玩家属性
+        target_hp = target_base_hp + target_hp_additional
+        target_max_hp = target_base_hp + target_hp_additional
+        target_attack = target_base_attack + target_attack_additional
+        target_defense = target_base_defense + target_defense_additional
+        target_name = target.nickname
 
         # 更新战斗日志显示
         battle_log = [
             "⚔️ PVP战斗开始 ⚔️\n",
-            f"[{attacker.nickname}]",
-            f"❤️ 生命: {attacker_total_hp} (基础{attacker_hp} / 装备{attacker_hp_bonus})",
-            f"⚔️ 攻击力: {attacker_total_attack} (基础{attacker_attack} / 装备{attacker_weapon_bonus})",
-            f"🛡️ 防御力: {attacker_total_defense} (基础{attacker_defense} / 装备{int(attacker_armor_bonus * attacker_defense)})\n",
+            f"[{attacker_name}]",
+            f"❤️ 生命: {attacker_max_hp} (基础{attacker_hp} / 装备{attacker_hp_additional})",
+            f"⚔️ 攻击力: {attacker_attack} (基础{attacker_base_attack} / 装备{attacker_attack_additional})",
+            f"🛡️ 防御力: {attacker_defense} (基础{attacker_base_defense} / 装备{int(attacker_defense_additional)})\n",
             f"VS\n",
-            f"[{target.nickname}]",
-            f"❤️ 生命: {target_total_hp} (基础{target_hp} / 装备{target_hp_bonus})",
-            f"⚔️ 攻击力: {target_total_attack} (基础{target_attack} / 装备{target_weapon_bonus})",
-            f"🛡️ 防御力: {target_total_defense} (基础{target_defense} / 装备{int(target_armor_bonus * target_defense)})\n"
+            f"[{target_name}]",
+            f"❤️ 生命: {target_max_hp} (基础{target_hp} / 装备{target_hp_additional})",
+            f"⚔️ 攻击力: {target_attack} (基础{target_base_attack} / 装备{target_attack_additional})",
+            f"🛡️ 防御力: {target_defense} (基础{target_base_defense} / 装备{int(target_defense_additional)})\n"
         ]
-
-        # 战斗逻辑中使用总生命值
-        attacker_hp = attacker_total_hp
-        target_hp = target_total_hp
 
         # 战斗逻辑
         round_num = 1
         while attacker_hp > 0 and target_hp > 0:
-            # 攻击者回合
-            base_damage = max(1, attacker_total_attack - target_total_defense)  # 已经包含了装备加成
-            damage = int(base_damage * random.uniform(0.8, 1.2))  # 只添加随机波动
-            target_hp -= damage
 
-            if round_num <= 5:
+            # 减伤率为防御值的10%，最高不超过80%
+            target_damage_reduction = min(target_defense/1000, 0.8)
+            attacker_damage = int(attacker_attack * (1- target_damage_reduction))
+
+            # 伤害修正：确保减伤后伤害至少为1
+            attacker_damage = max(1, attacker_damage)
+
+            attacker_explain_str = ""
+
+            # 应用随机因素
+            rand_val = random.random()
+            if rand_val < 0.2:
+                # 暴击
+                attacker_final_damage = int(attacker_damage * random.uniform(1.5, 1.8))
+                attacker_explain_str = "💥暴击！"
+            elif rand_val < 0.2:
+                # 失手
+                attacker_final_damage = max(1, int(attacker_damage * random.uniform(0.5, 0.7)))
+                attacker_explain_str = "🤦‍♂️失手了！"
+            else:
+                # 正常命中
+                attacker_final_damage = int(attacker_damage)
+
+            # 确保最终伤害至少为1点
+            attacker_final_damage = max(1, attacker_final_damage)
+
+            # 减少目标玩家血量
+            target_hp -= attacker_final_damage
+
+            # 减伤率为防御值的10%，最高不超过80%
+            attacker_damage_reduction = min(attacker_defense/1000, 0.8)
+            target_damage = int(target_attack * (1- attacker_damage_reduction))
+
+            # 伤害修正：确保减伤后伤害至少为1
+            target_damage = max(1, target_damage)
+
+            target_explain_str = ""
+
+            # 应用随机因素
+            rand_val = random.random()
+            if rand_val < 0.2:
+                # 暴击
+                target_final_damage = int(target_damage * random.uniform(1.5, 1.8))
+                target_explain_str = "💥暴击！"
+            elif rand_val < 0.2:
+                # 失手
+                target_final_damage = max(1, int(target_damage * random.uniform(0.5, 0.7)))
+                target_explain_str = "🤦‍♂️失手了！"
+            else:
+                # 正常命中
+                target_final_damage = int(target_damage)
+
+            # 确保最终伤害至少为1点
+            target_final_damage = max(1, target_final_damage)
+
+            # 减少攻击玩家血量
+            attacker_hp -= target_final_damage
+
+            # 记录战斗日志（前4回合）
+            if round_num <= 4:
                 battle_log.append(f"\n第{round_num}回合")
-                battle_log.append(f"{attacker.nickname}对{target.nickname}造成 {damage} 点伤害")
-
-            # 目标反击
-            if target_hp > 0:
-                base_damage = max(1, target_total_attack - attacker_total_defense)  # 已经包含了装备加成
-                damage = int(base_damage * random.uniform(0.8, 1.2))  # 只添加随机波动
-                attacker_hp -= damage
-
-                if round_num <= 5:
-                    battle_log.append(f"{target.nickname}对{attacker.nickname}造成 {damage} 点伤害")
+                battle_log.append(f"{attacker_explain_str}{attacker_name}对{target_name}造成 {attacker_final_damage} 点伤害")
+                battle_log.append(f"{target_explain_str}{target_name}对{attacker_name}造成 {target_final_damage} 点伤害")
 
             round_num += 1
             if round_num > 10:  # 限制最大回合数
@@ -1731,23 +1772,32 @@ class Game(Plugin):
         penalty_rate = max(0.2, 0.6 - (round_num - 1) * 0.05)  # 每回合减少5%,最低20%
         battle_log.append("\n战斗结果:")
 
-        if attacker_hp <= 0:  # 攻击者失败
+        # 直接使用inventory列表
+        attacker_items = None
+        target_items = None
+        if attacker.inventory:
+            attacker_items = attacker.inventory
+        if target.inventory:
+            target_items = target.inventory
+
+        if attacker_hp <= 0:
+            # 目标玩家胜利
             # 扣除金币
             attacker_gold = int(attacker.gold)
             penalty_gold = int(attacker_gold * penalty_rate)
             new_attacker_gold = attacker_gold - penalty_gold
             new_target_gold = int(target.gold) + penalty_gold
 
-            # 随机丢失物品
-            attacker_items = attacker.inventory  # 直接使用inventory列表
+            # 随机赔付一件物品给对方
             lost_item = None
             if attacker_items:
                 lost_item = random.choice(attacker_items)
                 attacker_items.remove(lost_item)
+                target_items.extend([lost_item] * 1)
 
             # 更新数据
             self._update_player_data(user_id, {
-                'hp': str(attacker_hp),
+                'hp': '0',
                 'gold': str(new_attacker_gold),
                 'inventory': attacker_items,  # _update_player_data会处理列表到JSON的转换
                 'last_attack': str(current_time)
@@ -1755,42 +1805,46 @@ class Game(Plugin):
             self._update_player_data(target.user_id, {  # 这里改为使用user_id
                 'hp': str(target_hp),
                 'gold': str(new_target_gold),
-                'inventory': target.inventory,  # _update_player_data会处理列表到JSON的转换
+                'inventory': target_items,  # _update_player_data会处理列表到JSON的转换
             })
 
             result = f"{target.nickname} 获胜!\n{attacker.nickname} 赔偿 {penalty_gold} 金币"
             if lost_item:
-                result += f"\n{attacker.nickname} 丢失了 {lost_item}"
+                result += f"\n{attacker_name} 的 {lost_item} 被 {target_name} 夺走！"
 
-        else:  # 攻击者胜利
+        else:
+            # 攻击玩家胜利
             # 扣除金币
             target_gold = int(target.gold)
             penalty_gold = int(target_gold * penalty_rate)
             new_target_gold = target_gold - penalty_gold
             new_attacker_gold = int(attacker.gold) + penalty_gold
 
-            # 随机丢失物品
+            # 随机赔付一件物品给对方
             target_items = target.inventory  # 直接使用inventory列表
             lost_item = None
             if target_items:
                 lost_item = random.choice(target_items)
                 target_items.remove(lost_item)
+                attacker_items.extend([lost_item] * 1)
 
             # 更新数据
             self._update_player_data(target.user_id, {  # 使用target_id而不是nickname
-                'hp': str(target_hp),
+                'hp': '0',
                 'gold': str(new_target_gold),
                 'inventory': target_items,  # _update_player_data会处理列表到JSON的转换
             })
+
             self._update_player_data(user_id, {
                 'hp': str(attacker_hp),
                 'gold': str(new_attacker_gold),
-                'last_attack': str(current_time)
+                'last_attack': str(current_time),
+                'inventory': attacker_items
             })
 
-            result = f"{attacker.nickname} 获胜!\n{target.nickname} 赔偿 {penalty_gold} 金币"
+            result = f"{attacker_name} 获胜!\n{target.nickname} 赔偿 {penalty_gold} 金币"
             if lost_item:
-                result += f"\n{target.nickname} 丢失了 {lost_item}"
+                result += f"\n{target_name} 的 {lost_item} 被 {attacker_name} 夺走！"
 
         battle_log.append(result)
         return "\n".join(battle_log)
