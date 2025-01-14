@@ -681,11 +681,12 @@ class Player:
         # 获取武器加成
         if equipped_weapon and equipped_weapon in items_info:
             weapon_info = items_info[equipped_weapon]
+
             weapon_stats = []
             if weapon_info.get('attack', '0') != '0':
-                weapon_stats.append(f"攻击加成：{weapon_info['attack']}%")
+                weapon_stats.append(f"⚔️:{weapon_info['attack']}%")
             if weapon_info.get('defense', '0') != '0':
-                weapon_stats.append(f"防御加成：{weapon_info['defense']}%")
+                weapon_stats.append(f"🛡️:{weapon_info['defense']}%")
             weapon_str = f"{equipped_weapon}({', '.join(weapon_stats)})" if weapon_stats else equipped_weapon
         else:
             weapon_str = "无"
@@ -695,11 +696,11 @@ class Player:
             armor_info = items_info[equipped_armor]
             armor_stats = []
             if armor_info.get('attack', '0') != '0':
-                armor_stats.append(f"攻击加成：{armor_info['attack']}%")
+                armor_stats.append(f"⚔️:{armor_info['attack']}%")
             if armor_info.get('defense', '0') != '0':
-                armor_stats.append(f"防御加成：{armor_info['defense']}%")
+                armor_stats.append(f"🛡️:{armor_info['defense']}%")
             if armor_info.get('hp', '0') != '0':
-                armor_stats.append(f"生命加成：{armor_info['hp']}%")
+                armor_stats.append(f"❤️:{armor_info['hp']}%")
             armor_str = f"{equipped_armor}({', '.join(armor_stats)})" if armor_stats else equipped_armor
         else:
             armor_str = "无"

@@ -1190,9 +1190,9 @@ class Game(Plugin):
                 battle_log.append(f"\n🆙 升级啦！当前等级 {new_level}")
                 battle_log.append(f"\n[{player_name}] Lv.{player.level}  Exp:{new_exp}/{player.get_exp_for_next_level(new_level)}")
                 battle_log.append("属性提升：")
-                battle_log.append(f"❤️ 生命上限 +{hp_increase}")
-                battle_log.append(f"⚔️ 攻击力 +{attack_increase}")
-                battle_log.append(f"🛡️ 防御力 +{defense_increase}")
+                battle_log.append(f"❤️ 基础生命上限 +{hp_increase}")
+                battle_log.append(f"⚔️ 基础攻击力 +{attack_increase}")
+                battle_log.append(f"🛡️ 基础防御力 +{defense_increase}")
             else:
                 battle_log.append(f"\n[{player_name}] Lv.{player.level}  Exp:{new_exp}/{player.get_exp_for_next_level(new_level)}")
         else:
