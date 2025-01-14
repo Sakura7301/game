@@ -93,28 +93,30 @@ class Game(Plugin):
                         ['双手巨剑', '魂1神器', 'weapon', '0', '50', '0', '5000', '4'],
                         ['秘银剑', '魔法工匠打造的秘银剑', 'weapon', '0', '60', '0', '6000', '5'],
                         ['湖女之剑', '我知道这把剑很强，但是它是不是来错片场了？是吧杰洛特。', 'weapon', '0', '70', '0', '7000', '5'],
-                        ['如意金箍棒', '重一万三千五百斤', 'weapon', '0', '100', '0', '10000', '5'],
-                        ['破衣烂衫', '你也不想当流浪汉，对吧', 'armor', '10', '0', '1', '100', '1'],
-                        ['斗篷', '提供基本保护的斗篷', 'armor', '30', '0', '3', '300', '1'],
-                        ['布甲', '简单的布制护甲', 'armor', '50', '0', '5', '500', '1'],
-                        ['乌萨奇睡衣', '乌拉呀哈~呀哈乌拉~', 'armor', '70', '0', '7', '700', '1'],
-                        ['皮甲', '轻便的皮质护甲', 'armor', '100', '0', '10', '1000', '2'],
-                        ['帝骑腰带', '都闪开，我要开始装B了', 'armor', '150', '0', '15', '1500', '2'],
-                        ['铁甲', '轻便的皮质护甲', 'armor', '180', '0', '18', '1800', '2'],
-                        ['锁子甲', '由链环组成的护甲', 'armor', '250', '0', '25', '2500', '3'],
-                        ['精钢甲', '精钢打造的铠甲', 'armor', '300', '0', '30', '3000', '3'],
-                        ['秘银铠甲', '帅是一辈子的事', 'armor', '380', '0', '38', '3800', '4'],
-                        ['初音未来cos服', '可爱捏~~等等，你刚刚说了你要穿着这玩意去打架，对吧？？？', 'armor', '100', '10', '4', '4000', '4'],
-                        ['荆棘铠甲', '你最好别碰我，兄弟，我不开玩笑', 'armor', '400', '15', '40', '4000', '4'],
-                        ['龙鳞甲', '龙鳞制成的铠甲', 'armor', '600', '0', '60', '6000', '5'],
-                        ['神圣铠甲', '具有神圣力量的铠甲', 'armor', '700', '0', '70', '7000', '6'],
-                        ['永恒战甲', '传说中的不朽铠甲', 'armor', '800', '0', '70', '8000', '7'],
-                        ['面包', '普普通通的面包，没什么特别的，回复20点生命值', 'consumable', '20', '0', '0', '20', '1'],
-                        ['药水', '出门必备的小药水，回复50点生命值', 'consumable', '50', '0', '0', '50', '2'],
-                        ['急救包', '出事儿了就得靠它，回复150点生命值', 'consumable', '80', '0', '0', '150', '3'],
-                        ['治疗卷轴', '麻瓜总是很难理解卷轴上的符文到底是怎么发挥作用的，回复200点生命值', 'consumable', '100', '0', '0', '200', '4'],
-                        ['元素瓶', '不死人的果粒橙', 'consumable', '400', '0', '0', '400', '5'],
-                        ['女神的祝福', '来自太阳长女葛温德林的祝福，回复800点生命值', 'consumable', '500', '0', '0', '800', '5']
+                        ['如意金箍棒', '我这棍，本是东洋大海龙宫里得来的，唤做天河镇底神珍铁，又唤做如意金箍棒。重一万三千五百斤', 'weapon', '0', '80', '0', '8000', '5'],
+                        ['三尖两刃刀', '那真君抖擞神威，摇身一变，变得身高万丈，两只手，举着三尖两刃神锋，好便似华山顶上之峰。', 'weapon', '0', '80', '0', '8000', '5'],
+                        ['破衣烂衫', '你也不想当流浪汉，对吧', 'armor', '1', '0', '1', '200', '1'],
+                        ['斗篷', '提供基本保护的斗篷', 'armor', '3', '0', '3', '600', '1'],
+                        ['布甲', '简单的布制护甲', 'armor', '5', '0', '5', '1000', '1'],
+                        ['乌萨奇睡衣', '乌拉呀哈~呀哈乌拉~', 'armor', '7', '0', '7', '1400', '1'],
+                        ['皮甲', '轻便的皮质护甲', 'armor', '10', '0', '10', '2000', '2'],
+                        ['帝骑腰带', '都闪开，我要开始装B了', 'armor', '15', '0', '15', '3000', '2'],
+                        ['铁甲', '轻便的皮质护甲', 'armor', '18', '0', '18', '3600', '2'],
+                        ['锁子甲', '由链环组成的护甲', 'armor', '25', '0', '25', '5000', '3'],
+                        ['精钢甲', '精钢打造的铠甲', 'armor', '30', '0', '30', '6000', '3'],
+                        ['秘银铠甲', '帅是一辈子的事', 'armor', '38', '0', '38', '7600', '4'],
+                        ['初音未来cos服', '可爱捏~~等等，你刚刚说了你要穿着这玩意去打架，对吧？？？', 'armor', '10', '10', '4', '4000', '4'],
+                        ['荆棘铠甲', '你最好别碰我，兄弟，我不开玩笑', 'armor', '40', '15', '40', '8000', '4'],
+                        ['龙鳞甲', '龙鳞制成的铠甲', 'armor', '60', '0', '60', '1200', '5'],
+                        ['神圣铠甲', '具有神圣力量的铠甲', 'armor', '70', '0', '70', '1400', '6'],
+                        ['永恒战甲', '传说中的不朽铠甲', 'armor', '80', '0', '70', '1600', '7'],
+                        ['面包', '普普通通的面包，没什么特别的，回复50点生命值', 'consumable', '50', '0', '0', '25', '1'],
+                        ['药水', '出门必备的小药水，回复100点生命值', 'consumable', '100', '0', '0', '50', '2'],
+                        ['急救包', '出事儿了就得靠它，回复300点生命值', 'consumable', '300', '0', '0', '150', '3'],
+                        ['治疗卷轴', '麻瓜总是很难理解卷轴上的符文到底是怎么发挥作用的，回复400点生命值', 'consumable', '400', '0', '0', '200', '4'],
+                        ['原素瓶', '不死人的果粒橙，回复1000点生命值', 'consumable', '1000', '0', '0', '500', '5'],
+                        ['杰克的酒', '卡塔利纳的杰克·巴尔多赠予的酒，非常好喝！回复2000点生命值', 'consumable', '2000', '0', '0', '1000', '5']
+                        ['女神的祝福', '来自太阳长女葛温德林的祝福，回复全部生命值', 'consumable', '9999', '0', '0', '2000', '5']
                     ]
                     writer.writerows(default_items)
 
@@ -139,7 +141,8 @@ class Game(Plugin):
             config_file = os.path.join(self.data_dir, "config.json")
             if not os.path.exists(config_file):
                 default_config = {
-                    "admins": ["野欲", "小鲨匕", "老B登", "上海-小鲨匕"]  # 默认管理员列表
+                    # 默认管理员列表
+                    "admins": ["野欲", "小鲨匕", "老B登", "上海-小鲨匕"]
                 }
                 with open(config_file, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, ensure_ascii=False, indent=2)
@@ -779,8 +782,16 @@ class Game(Plugin):
         :return: 生成的怪物字典信息
         """
         # 校验传入的玩家等级合法性
-        player_level = max(1, int(player.level))  # 玩家等级至少为 1
-        level_factor = 1 + (player_level - 1) * 0.2
+        player_level = max(1, int(player.level))
+
+        # 设置随机种子为当前时间戳
+        random.seed(time.time())
+        # 怪物的等级随机(根据玩家等级上下浮动)
+        random_level = random.randint(-2, 2)
+        # 计算怪物等级
+        monster_level = max(1, player_level + random_level)
+        # 计算等级因子
+        level_factor = 1 + (monster_level - 1) * 0.3
 
         # 定义怪物库
         monsters = {
@@ -925,6 +936,8 @@ class Game(Plugin):
 
         # 随机选择该场景中的一个怪物
         monster = random.choice(monsters[scene])
+        # 增加怪物等级
+        monster['level'] = monster_level
 
         # 判断是否生成变异怪物
         if self._is_mutant():  # 使用抽象方法判断是否变异
@@ -957,51 +970,35 @@ class Game(Plugin):
         """战斗系统"""
         player = self.get_player(user_id)
 
-        # 获取玩家基础属性
-        player_base_hp = int(player.hp)
-        player_base_attack = int(player.attack)
-        player_base_defense = int(player.defense)
-
-        # 获取装备加成
-        attack_additional = self.equipment_system.get_weapon_bonus(player)
-        defense_additional = self.equipment_system.get_armor_reduction(player)
-
-        # 获取护甲提供的生命值加成
-        hp_additional = 0
-        if player.equipped_armor:
-            items_info = self.item_system.get_all_items()
-            if player.equipped_armor in items_info:
-                armor_info = items_info[player.equipped_armor]
-                hp_additional = int(armor_info.get('hp', 0))
-
         # 玩家属性
-        player_hp = player_base_hp + hp_additional
-        player_max_hp = player_base_hp + hp_additional
-        player_attack = player_base_attack + attack_additional
-        player_defense = player_base_defense + defense_additional
+        player_level = player.level
+        player_hp = int(player.hp)
+        player_max_hp = int(player.max_hp)
+        player_attack = int(player.attack)
+        player_defense = int(player.defense)
         player_name = player.nickname
+        # 减伤率为防御值的10%，最高不超过80%
+        player_damage_reduction = min(player_defense/1000, 0.8)
+        player_total_damage = 0
 
         # 怪物属性
+        monster_level = monster['level']
         monster_hp = monster['hp']
         monster_max_hp = monster['hp']
         monster_attack = monster['attack']
         monster_defense = monster['defense']
         monster_name = monster.get('name', '未知怪物')
+        # 减伤率为防御值的10%，最高不超过80%
+        monster_damage_reduction = min(monster_defense/1000, 0.8)
+        monster_total_damage = 0
 
         #日志打印怪物属性
-        logger.debug(f"玩家[{player_name}]属性: 生命值: {player_hp}, 攻击力: {player_attack}, 防御力: {player_defense}")
+        logger.debug(f"玩家[{player_name}]属性: 生命值: {player_hp}/{player_max_hp}, 攻击力: {player_attack}, 防御力: {player_defense}")
         logger.debug(f"怪物[{monster_name}]属性: 生命值: {monster_hp}, 攻击力: {monster_attack}, 防御力: {monster_defense}")
 
         battle_log = [f"⚔️ 遭遇了 {monster['name']}！"]
-        battle_log.append(f"\n你的属性:")
-        battle_log.append(f"❤️ 生命值: {player_max_hp} (基础{player_base_hp} / 装备{hp_additional})")
-        battle_log.append(f"⚔️ 攻击力: {player_attack} (基础{player_base_attack} / 装备{attack_additional})")
-        battle_log.append(f"🛡️ 防御力: {player_defense} (基础{player_base_defense} / 装备{defense_additional})")
-
-        battle_log.append(f"\n怪物属性:")
-        battle_log.append(f"❤️ 生命值: {monster_max_hp}")
-        battle_log.append(f"⚔️ 攻击力: {monster_attack}")
-        battle_log.append(f"🛡️ 防御力: {monster_defense}")
+        battle_log.append(f"\n{player_name} Lv.{player_level}\n❤️[{player_hp}]\n⚔️[{player_attack}]\n🛡️[{str(player_defense)}]")
+        battle_log.append(f"\n{monster_name} Lv.{monster_level}\n❤️[{monster_hp}]\n⚔️[{monster_attack}]\n🛡️[{str(monster_defense)}]")
 
         # 怪物是否狂暴状态
         is_berserk = False
@@ -1014,9 +1011,7 @@ class Game(Plugin):
             if round_num <= 4:
                 battle_log.append(f"\n第{round_num}回合")
 
-            # 减伤率为防御值的10%，最高不超过80%
-            monster_damage_reduction = min(monster_defense/1000, 0.8)
-            logger.debug(f"怪物减伤: {monster_damage_reduction}")
+            # 计算玩家伤害
             player_damage = int(player_attack * (1- monster_damage_reduction))
 
             # 伤害修正：确保减伤后伤害至少为1
@@ -1024,13 +1019,15 @@ class Game(Plugin):
 
             player_explain_str = ""
 
-            # 应用随机因素
-            rand_val = random.random()
-            if rand_val < 0.2:
+            # 设置随机种子为当前时间戳
+            random.seed(time.time())
+            # 生成1到100之间的随机数
+            random_number = random.randint(1, 100)
+            if random_number > 80:
                 # 暴击
                 player_final_damage = int(player_damage * random.uniform(1.5, 1.8))
                 player_explain_str = "💥暴击！"
-            elif rand_val < 0.2:
+            elif random_number < 20:
                 # 失手
                 player_final_damage = max(1, int(player_damage * random.uniform(0.5, 0.7)))
                 player_explain_str = "🤦‍♂️失手了！"
@@ -1043,10 +1040,15 @@ class Game(Plugin):
 
             # 减少怪物血量
             monster_hp -= player_final_damage
+            player_total_damage += player_final_damage
 
             # 记录战斗日志（前4回合）
             if round_num <= 4:
                 battle_log.append(f"{player_explain_str}你对{monster_name}造成 {player_final_damage} 点伤害")
+
+            # 检查怪物是否死亡
+            if monster_hp <= 0:
+                break
 
             # 检查怪物是否进入狂暴状态
             if not is_berserk and monster_hp < monster_max_hp * 0.3 and random.random() < 0.4:
@@ -1060,9 +1062,7 @@ class Game(Plugin):
 
             # 怪物反击
             if monster_hp > 0:
-                # 减伤率为防御值的10%，最高不超过80%
-                player_damage_reduction = min(player_defense/1000, 0.8)
-                logger.debug(f"玩家减伤: {player_damage_reduction}")
+                # 计算怪物伤害
                 monster_damage = int(monster_attack * (1- player_damage_reduction))
 
                 # 确保减伤后伤害至少为1
@@ -1070,13 +1070,15 @@ class Game(Plugin):
 
                 explain_str = ""
 
-                # 应用随机因素
-                rand_val = random.random()
-                if rand_val < 0.1:
+                # 设置随机种子为当前时间戳
+                random.seed(time.time())
+                # 生成1到100之间的随机数
+                random_number = random.randint(1, 100)
+                if random_number > 80:
                     # 暴击
                     monster_final_damage = int(monster_damage * random.uniform(1.5, 1.8))
                     explain_str = "💥暴击！"
-                elif rand_val < 0.2:
+                elif random_number < 20:
                     # 失手
                     monster_final_damage = max(1, int(monster_damage * random.uniform(0.5, 0.7)))
                     explain_str = "🤦‍♂️失手了！"
@@ -1086,6 +1088,7 @@ class Game(Plugin):
 
                 # 减少玩家生命值
                 player_hp -= monster_final_damage
+                monster_total_damage += monster_final_damage
 
                 life_steal = 0
 
@@ -1103,10 +1106,30 @@ class Game(Plugin):
 
             round_num += 1
 
+        if player_hp < 0:
+            battle_log.append(f"\n{player_name}被打败了！")
+
+        if monster_hp < 0:
+            battle_log.append(f"\n{monster_name}被打败了！")
+
+        # 战斗结束
         battle_log.append(f"\n战斗持续了{round_num}回合")
+
+        # 重要事件统计
         if important_events:
             battle_log.append("重要事件:")
             battle_log.extend(important_events)
+
+        # 添加战斗只有一回合时的特殊战报
+        if round_num == 1 and player_hp > 0:
+            battle_log.append(f"{player_name}：一刀秒了，有什么好说的？")
+        elif round_num == 1 and monster_hp > 0:
+            battle_log.append(f"{monster_name}：一刀秒了，有什么好说的？")
+
+        # 向战斗结果中添加玩家和怪物造成的总伤害
+        battle_log.append(f"\n伤害统计:")
+        battle_log.append(f"{player_name}: {player_total_damage}")
+        battle_log.append(f"{monster_name}: {monster_total_damage}")
 
         if player_hp > 0:
             # 获取怪物基础经验值
@@ -1124,11 +1147,12 @@ class Game(Plugin):
             level_up = False
 
             # 计算等级提升所需要的经验值
-            need_exp = int(player.level * 100 * (1 + (player.level - 1)))
-            # 经验值结算（玩家当前经验值 + 本次经验奖励）
-            actual_gain_exp = player.exp + award_exp
-            if actual_gain_exp >= need_exp:
+            exp_required_to_level_up = player.get_exp_for_next_level(player_level) - player.exp
+            # 判断本次获得的经验是否足够升级
+            if award_exp >= exp_required_to_level_up:
+                # 升级
                 new_level = int(player.level) + 1
+                new_exp = award_exp - exp_required_to_level_up
                 level_up = True
 
                 # 使用固定增长值
@@ -1139,17 +1163,22 @@ class Game(Plugin):
                 new_max_hp = int(player.max_hp) + hp_increase
                 new_attack = int(player.attack) + attack_increase
                 new_defense = int(player.defense) + defense_increase
+            else :
+                # 不升级
+                new_level = player.level
+                new_exp = player.exp + award_exp
+                new_max_hp = player.max_hp
+                new_attack = player.attack
+                new_defense = player.defense
 
-                self._update_player_data(user_id, {
-                    'level': str(new_level),
-                    'max_hp': str(new_max_hp),
-                    'attack': str(new_attack),
-                    'defense': str(new_defense)
-                })
-
+            # 更新玩家数据
             self._update_player_data(user_id, {
+                'level': str(new_level),
+                'exp': str(new_exp),
                 'hp': str(player_hp),
-                'exp': str(actual_gain_exp),
+                'max_hp': str(new_max_hp),
+                'attack': str(new_attack),
+                'defense': str(new_defense),
                 'gold': str(actual_gain_gold)
             })
 
@@ -1159,14 +1188,19 @@ class Game(Plugin):
 
             if level_up:
                 battle_log.append(f"\n🆙 升级啦！当前等级 {new_level}")
+                battle_log.append(f"\n[{player_name}] Lv.{player.level}  Exp:{new_exp}/{player.get_exp_for_next_level(new_level)}")
                 battle_log.append("属性提升：")
                 battle_log.append(f"❤️ 生命上限 +{hp_increase}")
                 battle_log.append(f"⚔️ 攻击力 +{attack_increase}")
                 battle_log.append(f"🛡️ 防御力 +{defense_increase}")
+            else:
+                battle_log.append(f"\n[{player_name}] Lv.{player.level}  Exp:{new_exp}/{player.get_exp_for_next_level(new_level)}")
         else:
-            self._update_player_data(user_id, {'hp': '0'})
-            battle_log.append(f"\n💀 战斗失败")
-            battle_log.append("你被打倒了，需要使用药品恢复生命值")
+            # 更新玩家血量
+            self._update_player_data(user_id, {
+                'hp': '0',
+            })
+            battle_log.append(f"\n💀 战斗失败！")
 
         return "\n".join(battle_log)
 
@@ -1597,69 +1631,28 @@ class Game(Plugin):
 
     def pvp_combat(self, player_1: Player, player_2: Player) -> str:
         """PVP战斗"""
-        # 获取攻击玩家属性
-        player_1_base_hp = int(player_1.hp)
-        player_1_base_attack = int(player_1.attack)
-        player_1_base_defense = int(player_1.defense)
-
-        # 获取攻击玩家装备加成
-        player_1_attack_additional = self.equipment_system.get_weapon_bonus(player_1)
-        player_1_defense_additional = self.equipment_system.get_armor_reduction(player_1)
-
-        # 获取物品信息
-        items_info = self.item_system.get_all_items()  # 添加这行来获取物品信息
-
-        # 获取攻击玩家护甲提供的生命值加成
-        player_1_hp_additional = 0
-        if player_1.equipped_armor:
-            items_info = self.item_system.get_all_items()
-            if player_1.equipped_armor in items_info:
-                armor_info = items_info[player_1.equipped_armor]
-                player_1_hp_additional = int(armor_info.get('hp', 0))
-
-        # 获取目标玩家基础属性
-        player_2_base_hp = int(player_2.hp)
-        player_2_base_attack = int(player_2.attack)
-        player_2_base_defense = int(player_2.defense)
-
-        # 获取目标玩家装备加成
-        player_2_attack_additional = self.equipment_system.get_weapon_bonus(player_2)
-        player_2_defense_additional = self.equipment_system.get_armor_reduction(player_2)
-
-        # 获取目标玩家护甲提供的生命值加成
-        player_2_hp_additional = 0
-        if player_2.equipped_armor:
-            items_info = self.item_system.get_all_items()
-            if player_2.equipped_armor in items_info:
-                armor_info = items_info[player_2.equipped_armor]
-                player_2_hp_additional = int(armor_info.get('hp', 0))
-
         # 攻击玩家属性
-        player_1_hp = player_1_base_hp + player_1_hp_additional
-        player_1_max_hp = player_1_base_hp + player_1_hp_additional
-        player_1_attack = player_1_base_attack + player_1_attack_additional
-        player_1_defense = player_1_base_defense + player_1_defense_additional
+        player_1_level = player_1.level
+        player_1_hp = int(player_1.hp)
+        player_1_max_hp = int(player_1.max_hp)
+        player_1_attack = int(player_1.attack)
+        player_1_defense = int(player_1.defense)
         player_1_name = player_1.nickname
 
         # 目标玩家属性
-        player_2_hp = player_2_base_hp + player_2_hp_additional
-        player_2_max_hp = player_2_base_hp + player_2_hp_additional
-        player_2_attack = player_2_base_attack + player_2_attack_additional
-        player_2_defense = player_2_base_defense + player_2_defense_additional
+        player_2_level = player_2.level
+        player_2_hp = int(player_2.hp)
+        player_2_max_hp = int(player_2.max_hp)
+        player_2_attack = int(player_2.attack)
+        player_2_defense = int(player_2.defense)
         player_2_name = player_2.nickname
 
         # 更新战斗日志显示
         battle_log = [
             "同意挑战！\n⚔️ PVP战斗开始 ⚔️\n",
-            f"[{player_1_name}]",
-            f"❤️ 生命: {player_1_max_hp} (基础{player_1_hp} / 装备{player_1_hp_additional})",
-            f"⚔️ 攻击力: {player_1_attack} (基础{player_1_base_attack} / 装备{player_1_attack_additional})",
-            f"🛡️ 防御力: {player_1_defense} (基础{player_1_base_defense} / 装备{int(player_1_defense_additional)})\n",
+            f"[{player_1_name}] Lv.{player_1_level}\n❤️[{player_1_hp/player_1_max_hp}]\n⚔️[{player_1_attack}]\n🛡️[{str(player_1_defense)}]",
             f"VS\n",
-            f"[{player_2_name}]",
-            f"❤️ 生命: {player_2_max_hp} (基础{player_2_hp} / 装备{player_2_hp_additional})",
-            f"⚔️ 攻击力: {player_2_attack} (基础{player_2_base_attack} / 装备{player_2_attack_additional})",
-            f"🛡️ 防御力: {player_2_defense} (基础{player_2_base_defense} / 装备{int(player_2_defense_additional)})\n"
+            f"[{player_2_name}] Lv.{player_2_level}\n❤️[{player_2_hp/player_2_max_hp}]\n⚔️[{player_2_attack}]\n🛡️[{str(player_2_defense)}]"
         ]
 
         # 战斗逻辑
@@ -1735,7 +1728,7 @@ class Game(Plugin):
                 break
 
         # 计算惩罚金币比例(回合数越多惩罚越少)
-        penalty_rate = max(0.2, 0.6 - (round_num - 1) * 0.05)  # 每回合减少5%,最低20%
+        penalty_rate = max(0.1, 0.3 - (round_num - 1) * 0.05)  # 每回合减少5%,最低10%
         battle_log.append("\n战斗结果:")
 
         # 直接使用inventory列表

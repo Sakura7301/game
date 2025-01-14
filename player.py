@@ -648,72 +648,44 @@ class Player:
         except Exception as e:
             logger.error(f"创建数据备份失败: {e}")
 
+    def get_exp_for_next_level(self, level, base_exp=200, growth_factor=2):
+        """
+        计算当前等级升级到下一等级所需的经验值
+        :param level: 当前等级 (int)
+        :param base_exp: 一级所需基础经验值 (默认100)
+        :param growth_factor: 经验增长因子 (默认1.5，非线性增长)
+        :return: 当前等级升级到下一级所需的经验值 (int)
+        """
+        if level < 1:
+            raise ValueError("等级必须大于等于 1")
+
+        # 二次增长公式计算升级经验
+        required_exp = int(base_exp * (level ** growth_factor))
+        return required_exp
+
     def get_player_status(self, items_info: dict) -> str:
-        """获取家状态并检查异常
+        """获取家状态
 
         Args:
+            user_id: 用户ID
             items_info: 物品信息字典
 
         Returns:
             str: 格式化的玩家状态信息
         """
-        # 计算正常情况下应有的属性值
-        current_level = self.level
-        level_bonus_hp = (current_level - 1) * 50  # 每级增加50血量
-        level_bonus_attack = (current_level - 1) * 15  # 每级增加15攻击
-        level_bonus_defense = (current_level - 1) * 10  # 每级增加10防御
-
-        expected_max_hp = 100 + level_bonus_hp  # 基础100血量
-        expected_base_attack = 10 + level_bonus_attack  # 基础10攻击
-        expected_base_defense = 5 + level_bonus_defense  # 基础5防御
-
-        # 检查并纠正异常属性
-        needs_update = False
-        updates = {}
-
-        if self.max_hp != expected_max_hp:
-            updates['max_hp'] = str(expected_max_hp)
-            needs_update = True
-
-        if self.attack != expected_base_attack:
-            updates['attack'] = str(expected_base_attack)
-            needs_update = True
-
-        if self.defense != expected_base_defense:
-            updates['defense'] = str(expected_base_defense)
-            needs_update = True
-
-        # 如果生命值超过最大生命值，进行修正
-        if int(self.hp) > expected_max_hp:
-            updates['hp'] = str(expected_max_hp)
-            needs_update = True
-
-        # 如果发现异常，更新数据
-        if needs_update:
-            self.update_data(updates)
-
         # 获取装备加成
         equipped_weapon = self.equipped_weapon
         equipped_armor = self.equipped_armor
         equipped_fishing_rod = self.equipped_fishing_rod
 
-        # 基础属性(使用可能已经修正的值)
-        base_attack = self.attack
-        base_defense = self.defense
-
-        # 装备加成
-        weapon_bonus = 0
-        armor_bonus = 0
-
         # 获取武器加成
         if equipped_weapon and equipped_weapon in items_info:
             weapon_info = items_info[equipped_weapon]
-            weapon_bonus = int(weapon_info.get('attack', 0))
             weapon_stats = []
             if weapon_info.get('attack', '0') != '0':
-                weapon_stats.append(f"攻击{weapon_info['attack']}")
+                weapon_stats.append(f"攻击加成：{weapon_info['attack']}%")
             if weapon_info.get('defense', '0') != '0':
-                weapon_stats.append(f"防御{weapon_info['defense']}")
+                weapon_stats.append(f"防御加成：{weapon_info['defense']}%")
             weapon_str = f"{equipped_weapon}({', '.join(weapon_stats)})" if weapon_stats else equipped_weapon
         else:
             weapon_str = "无"
@@ -721,25 +693,16 @@ class Player:
         # 获取护甲加成
         if equipped_armor and equipped_armor in items_info:
             armor_info = items_info[equipped_armor]
-            armor_bonus = int(armor_info.get('defense', 0))
-            hp_bonus = int(armor_info.get('hp', 0))  # 添加生命值加成
             armor_stats = []
             if armor_info.get('attack', '0') != '0':
-                armor_stats.append(f"攻击{armor_info['attack']}")
+                armor_stats.append(f"攻击加成：{armor_info['attack']}%")
             if armor_info.get('defense', '0') != '0':
-                armor_stats.append(f"防御{armor_info['defense']}")
-            if armor_info.get('hp', '0') != '0':  # 添加生命值显示
-                armor_stats.append(f"生命{armor_info['hp']}")
+                armor_stats.append(f"防御加成：{armor_info['defense']}%")
+            if armor_info.get('hp', '0') != '0':
+                armor_stats.append(f"生命加成：{armor_info['hp']}%")
             armor_str = f"{equipped_armor}({', '.join(armor_stats)})" if armor_stats else equipped_armor
         else:
             armor_str = "无"
-            armor_bonus = 0
-            hp_bonus = 0  # 无装备时生命值加成为0
-
-        # 计算总属性
-        total_attack = base_attack + weapon_bonus
-        total_defense = base_defense + armor_bonus
-        total_max_hp = self.max_hp + hp_bonus  # 计算总生命值上限
 
         # 婚姻状态
         spouses = self.spouse.split(',') if self.spouse else []
@@ -763,18 +726,15 @@ class Player:
         status = [
             f"🏷️ 玩家: {self.nickname}",
             f"💰 金币: {self.gold}",
-            f"📊 等级: {current_level}",
-            f"✨ 经验: {self.exp}/{int(current_level * 100 * (1 + (current_level - 1)))}",
-            f"❤️ 生命值: {self.hp}/{total_max_hp} (基础{self.max_hp} / 装备{hp_bonus})",  # 修改生命值显示
-            f"⚔️ 攻击力: {total_attack} (基础{base_attack} / 装备{weapon_bonus})",
-            f"🛡️ 防御力: {total_defense} (基础{base_defense} / 装备{armor_bonus})",
+            f"📊 等级: {self.level}",
+            f"✨ 经验: {self.exp}/{int(self.get_exp_for_next_level(self.level))}",
+            f"❤️ 生命值: {self.hp}/{self.max_hp}",  # 修改生命值显示
+            f"⚔️ 攻击力: {self.attack}",
+            f"🛡️ 防御力: {self.defense}",
             f"🗡️ 装备武器: {weapon_str}",
-            f"🛡️ 装备护甲: {armor_str}",
+            f"⛓️ 装备护甲: {armor_str}",
             f"💕 婚姻状态: {marriage_status}"
         ]
-
-        if needs_update:
-            status.insert(1, "⚠️ 检测到属性异常已自动修正")
 
         # 如果装备了鱼竿，显示鱼竿信息
         if equipped_fishing_rod:

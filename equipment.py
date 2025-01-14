@@ -31,9 +31,6 @@ class Equipment:
         if not player.has_item(item_name):
             return "您没有这个物品"
 
-        # 获取装备前的属性
-        old_stats = self.get_equipment_stats(user_id)
-
         # 获取当前装备和背包
         current_slot = 'equipped_weapon' if item_type == 'weapon' else 'equipped_armor'
         current_equipment = getattr(player, current_slot)
@@ -50,25 +47,51 @@ class Equipment:
         inventory.remove(item_name)
         updates['inventory'] = inventory
 
+        # 计算需要更新的属性
+        new_max_hp = player.max_hp
+        new_hp = player.hp
+        new_attack = player.attack
+        new_defense = player.defense
+        if item_type == 'weapon':
+            updates['equipped_weapon'] = item_name
+            # 新的攻击力 = 固定攻击力 * 装备加成
+            new_attack = int((player.level * 10) * (1 + self.get_attack_by_weapon_name(item_name)/100))
+            # 新的生命值(武器不提供生命加成，无需重复计算)
+        else:
+            updates['equipped_armor'] = item_name
+            # 新的防御力 = 固定防御力 * 装备加成
+            new_defense = int((player.level * 10) * (1 + self.get_defense_by_armor_name(item_name)/100))
+            # 新的生命值
+            new_max_hp = int(player.level * 50 * (1 + self.get_hp_by_armor_name(item_name)/100))
+            # 调整当前血量
+            if player.hp > new_max_hp:
+                new_hp = new_max_hp
+            else:
+                new_hp = player.hp
+
         # 更新玩家数据
         self.game._update_player_data(user_id, updates)
-
-        # 获取装备后的属性
-        new_stats = self.get_equipment_stats(user_id)
-
         # 计算属性变化
-        attack_change = new_stats['attack'] - old_stats['attack']
-        defense_change = new_stats['defense'] - old_stats['defense']
-        hp_change = new_stats['hp'] - old_stats['hp']
+        max_hp_change = new_max_hp - player.max_hp
+        attack_change = new_attack - player.attack
+        defense_change = new_defense - player.defense
 
         # 构建属性变化提示
         changes = []
         if attack_change != 0:
-            changes.append(f"攻击力{'+' if attack_change > 0 else ''}{attack_change}")
+            changes.append(f"⚔️：{player.attack} -> {new_attack}")
         if defense_change != 0:
-            changes.append(f"防御力{'+' if defense_change > 0 else ''}{defense_change}")
-        if hp_change != 0:
-            changes.append(f"生命值{'+' if hp_change > 0 else ''}{hp_change}")
+            changes.append(f"🛡️：{player.defense} -> {new_defense}")
+        if max_hp_change != 0:
+            changes.append(f"❤️：{player.max_hp} -> {new_max_hp}")
+
+        # 更新玩家数据
+        self.game._update_player_data(user_id, {
+            'hp': str(new_hp),
+            'max_hp': str(new_max_hp),
+            'attack': str(new_attack),
+            'defense': str(new_defense)
+        })
 
         equip_type = "武器" if item_type == 'weapon' else "护甲"
         change_str = f"({', '.join(changes)})" if changes else ""
@@ -148,6 +171,50 @@ class Equipment:
             return 0
 
         return int(weapon.get('attack', 0))
+
+    def get_attack_by_weapon_name(self, weapon_name) -> int:
+        """获取武器攻击数值"""
+        if not weapon_name:
+            return 0
+        items = self.game.item_system.get_all_items()
+        weapon = items.get(weapon_name)
+        if not weapon:
+            return 0
+
+        return int(weapon.get('attack', 0))
+
+    def get_defense_by_armor_name(self, armor_name) -> int:
+        """获取防御数值"""
+        if not armor_name:
+            return 0
+        items = self.game.item_system.get_all_items()
+        weapon = items.get(armor_name)
+        if not weapon:
+            return 0
+
+        return int(weapon.get('defense', 0))
+
+    def get_hp_by_armor_name(self, armor_name) -> int:
+        """从防具上获取生命加成数值"""
+        if not armor_name:
+            return 0
+        items = self.game.item_system.get_all_items()
+        weapon = items.get(armor_name)
+        if not weapon:
+            return 0
+
+        return int(weapon.get('hp', 0))
+
+    def get_hp_by_weapon_name(self, weapon_name) -> int:
+        """从武器上获取生命加成数值"""
+        if not weapon_name:
+            return 0
+        items = self.game.item_system.get_all_items()
+        weapon = items.get(weapon_name)
+        if not weapon:
+            return 0
+
+        return int(weapon.get('hp', 0))
 
     def get_armor_reduction(self, target) -> float:
         """获取护甲减伤比例"""
