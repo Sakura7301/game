@@ -1618,7 +1618,7 @@ class Game(Plugin):
 
         return final_damage, explain_str
 
-    def calculate_compensation(self, round_num, total_money):
+    def calculate_compensation(self, round_num, total_money) -> int:
         """
         根据比赛的轮数与失败者的总金钱，计算赔付金额。
         :param round_num: 比赛轮数 (int)
@@ -1637,9 +1637,9 @@ class Game(Plugin):
         compensation_rate = max(current_rate, min_rate)
 
         # 根据比例计算赔付金额
-        compensation_amount = total_money * compensation_rate
+        compensation_amount = int(total_money * compensation_rate)
 
-        return round(compensation_amount, 2)  # 保留两位小数
+        return compensation_amount  # 保留两位小数
 
     def random_boolean(self):
         """
@@ -1651,6 +1651,48 @@ class Game(Plugin):
 
         # 随机生成 True 或 False
         return random.choice([True, False])
+
+    def pvp_close_an_acount(self, round_num, winner: Player, winner_hp, loser: Player) -> str:
+        # 直接使用inventory列表
+        winner_items = None
+        loser_items = None
+        if winner.inventory:
+            winner_items = winner.inventory
+        if loser.inventory:
+            loser_items = loser.inventory
+
+        # 计算扣除金币
+        penalty_gold = self.calculate_compensation(round_num, loser.gold)
+        new_loser_gold = int(loser.gold) - penalty_gold
+        new_winner_gold = int(winner.gold) + penalty_gold
+
+        # 失败者随机赔付一件物品给胜利者
+        loser_items = loser.inventory
+        lost_item = None
+        if loser_items:
+            lost_item = random.choice(loser_items)
+            loser_items.remove(lost_item)
+            winner_items.extend([lost_item] * 1)
+
+        # 更新失败者数据
+        self._update_player_data(loser.user_id, {
+            'hp': '0',
+            'gold': str(new_loser_gold),
+            'inventory': loser_items,
+        })
+
+        # 更新胜利者数据
+        self._update_player_data(winner.user_id, {
+            'hp': str(winner_hp),
+            'gold': str(new_winner_gold),
+            'inventory': winner_items
+        })
+
+        result = f"✌️ {winner.nickname} 获胜!\n{loser.nickname} 赔偿 {penalty_gold} 金币\n"
+        if lost_item:
+            result += f"{loser.nickname} 的 {lost_item} 被 {winner.nickname} 夺走！\n"
+
+        return result
 
     def pvp_combat(self, player_1: Player, player_2: Player) -> str:
         """PVP战斗"""
@@ -1690,9 +1732,8 @@ class Game(Plugin):
             player_1_final_damage, player_1_explain_str = self.damage_calculation(player_1_attack, player_2_defense)
             # 计算玩家2的本轮造成伤害
             player_2_final_damage, player_2_explain_str = self.damage_calculation(player_2_attack, player_1_defense)
-
+            # 获取本轮先手情况
             player_1_on_the_offensive = self.random_boolean()
-
             if player_1_on_the_offensive:
                 # ---------玩家1先手---------
                 # 减少目标玩家血量
@@ -1748,75 +1789,12 @@ class Game(Plugin):
         # 战斗结束
         battle_log.append(f"\n战斗持续了{round_num}回合")
 
-        # 直接使用inventory列表
-        player_1_items = None
-        player_2_items = None
-        if player_1.inventory:
-            player_1_items = player_1.inventory
-        if player_2.inventory:
-            player_2_items = player_2.inventory
-
-        if player_1_hp <= 0:
-            # 目标玩家胜利
-            # 扣除金币
-            penalty_gold = int(self.calculate_compensation(round_num, player_1.gold))
-            new_player_1_gold = int(player_1.gold) - penalty_gold
-            new_player_2_gold = int(player_2.gold) + penalty_gold
-
-            # 随机赔付一件物品给对方
-            lost_item = None
-            if player_1_items:
-                lost_item = random.choice(player_1_items)
-                player_1_items.remove(lost_item)
-                player_2_items.extend([lost_item] * 1)
-
-            # 更新数据
-            self._update_player_data(player_1.user_id, {
-                'hp': '0',
-                'gold': str(new_player_1_gold),
-                'inventory': player_1_items,  # _update_player_data会处理列表到JSON的转换
-            })
-            self._update_player_data(player_2.user_id, {  # 这里改为使用user_id
-                'hp': str(player_2_hp),
-                'gold': str(new_player_2_gold),
-                'inventory': player_2_items,  # _update_player_data会处理列表到JSON的转换
-            })
-
-            result = f"{player_2.nickname} 获胜!\n{player_1.nickname} 赔偿 {penalty_gold} 金币\n"
-            if lost_item:
-                result += f"{player_1_name} 的 {lost_item} 被 {player_2_name} 夺走！\n"
-
+        if player_2_hp <= 0:
+            # 发起挑战的玩家胜利，进行pvp结算
+            result = self.pvp_close_an_acount(round_num, player_1, player_2_hp, player_1)
         else:
-            # 攻击玩家胜利
-            # 扣除金币
-            penalty_gold = self.calculate_compensation(round_num, player_2.gold)
-            new_player_2_gold = int(player_2.gold) - penalty_gold
-            new_player_1_gold = int(player_1.gold) + penalty_gold
-
-            # 随机赔付一件物品给对方
-            player_2_items = player_2.inventory  # 直接使用inventory列表
-            lost_item = None
-            if player_2_items:
-                lost_item = random.choice(player_2_items)
-                player_2_items.remove(lost_item)
-                player_1_items.extend([lost_item] * 1)
-
-            # 更新数据
-            self._update_player_data(player_2.user_id, {  # 使用player_2_id而不是nickname
-                'hp': '0',
-                'gold': str(new_player_2_gold),
-                'inventory': player_2_items,  # _update_player_data会处理列表到JSON的转换
-            })
-
-            self._update_player_data(player_1.user_id, {
-                'hp': str(player_1_hp),
-                'gold': str(new_player_1_gold),
-                'inventory': player_1_items
-            })
-
-            result = f"✌️ {player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币\n"
-            if lost_item:
-                result += f"{player_2_name} 的 {lost_item} 被 {player_1_name} 夺走！\n"
+            # 接受挑战的玩家胜利，进行pvp结算
+            result = self.pvp_close_an_acount(round_num, player_2, player_1_hp, player_1)
 
         # 向战斗结果中添加玩家和怪物造成的总伤害
         battle_log.append(f"\n伤害统计:")
