@@ -10,6 +10,11 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 PLAYER_MAX_LEVEL = 81
+PLAYER_BASE_HP = 200
+PLAYER_BASE_MAX_HP = 200
+PLAYER_BASE_ATTACK = 20
+PLAYER_BASE_DEFENSE = 20
+PLAYER_BASE_EXP = 0
 
 
 class Player:
@@ -421,11 +426,11 @@ class Player:
             'level': '1',
             'last_checkin': '',
             'inventory': '[]',
-            'hp': '200',
-            'max_hp': '200',
-            'attack': '20',
-            'defense': '20',
-            'exp': '0',
+            'hp': PLAYER_BASE_HP,
+            'max_hp': PLAYER_BASE_MAX_HP,
+            'attack': PLAYER_BASE_ATTACK,
+            'defense': PLAYER_BASE_DEFENSE,
+            'exp': PLAYER_BASE_EXP,
             'last_fishing': '',
             'rod_durability': '{}',
             'equipped_weapon': '',
@@ -733,7 +738,7 @@ class Player:
             needs_update = True
 
         # 理论血量上限
-        theory_max_hp = int((player_level * 50 + 200) * (1 + hp_bonus/100))
+        theory_max_hp = int((player_level * 50 + PLAYER_BASE_MAX_HP) * (1 + hp_bonus/100))
         # 检查玩家血量上限是否符合预期
         if player_max_hp != theory_max_hp:
             # 血量上限异常，需要修正
@@ -744,7 +749,7 @@ class Player:
             needs_update = True
 
         # 理论攻击力
-        theory_attack = int((player_level * 10 + 10) * (1 + attack_bonus/100))
+        theory_attack = int((player_level * 10 + PLAYER_BASE_ATTACK) * (1 + attack_bonus/100))
         # 检查玩家攻击力是否符合预期
         if player_attack != theory_attack:
             # 攻击力异常，需要修正
@@ -752,7 +757,7 @@ class Player:
             needs_update = True
 
         # 理论防御力
-        theory_defense = int((player_level * 10 + 10) * (1 + defense_bonus/100))
+        theory_defense = int((player_level * 10 + PLAYER_BASE_DEFENSE) * (1 + defense_bonus/100))
         # 检查玩家防御力是否符合预期
         if player_defense != theory_defense:
             # 防御力异常，需要修正
