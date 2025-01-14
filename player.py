@@ -9,6 +9,7 @@ from collections import Counter
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
+PLAYER_MAX_LEVEL = 81
 
 
 class Player:
@@ -673,6 +674,19 @@ class Player:
         Returns:
             str: 格式化的玩家状态信息
         """
+
+        status = []
+
+        # 记录玩家基础属性
+        needs_update = False
+        updates = {}
+        player_level = self.level
+        player_exp = self.exp
+        player_hp = self.hp
+        player_max_hp = self.max_hp
+        player_attack = self.attack
+        player_defense = self.defense
+
         # 获取装备加成
         equipped_weapon = self.equipped_weapon
         equipped_armor = self.equipped_armor
@@ -705,6 +719,48 @@ class Player:
         else:
             armor_str = "无"
 
+        # 检查玩家等级
+        if player_level > PLAYER_MAX_LEVEL:
+            # 玩家等级异常，需要修正
+            player_level = PLAYER_MAX_LEVEL
+            player_exp = self.get_exp_for_next_level(PLAYER_MAX_LEVEL)
+            needs_update = True
+
+        # 理论血量上限
+        theory_max_hp = int((player_level * 50) * (1 + int(armor_info['hp'])/100))
+        # 检查玩家血量上限是否符合预期
+        if player_max_hp != theory_max_hp:
+            # 血量上限异常，需要修正
+            player_max_hp = theory_max_hp
+            # 调整当前血量
+            if player_hp > player_max_hp:
+                player_hp = player_max_hp
+            needs_update = True
+
+        # 理论攻击力
+        theory_attack = int((player_level * 10) * (1 + int(weapon_info['attack'])/100))
+        # 检查玩家攻击力是否符合预期
+        if player_attack != theory_attack:
+            # 攻击力异常，需要修正
+            player_attack = theory_attack
+            needs_update = True
+
+        # 理论防御力
+        theory_defense = int((player_level * 10) * (1 + int(armor_info['defense'])/100))
+        # 检查玩家防御力是否符合预期
+        if player_defense != theory_defense:
+            # 防御力异常，需要修正
+            player_defense = theory_defense
+            needs_update = True
+
+        if needs_update:
+            updates['level'] = str(player_level)
+            updates['exp'] = str(player_exp)
+            updates['hp'] = str(player_hp)
+            updates['max_hp'] = str(player_max_hp)
+            updates['attack'] = str(player_attack)
+            updates['defense'] = str(player_defense)
+
         # 婚姻状态
         spouses = self.spouse.split(',') if self.spouse else []
         spouses = [s for s in spouses if s]  # 过滤空字符串
@@ -736,6 +792,11 @@ class Player:
             f"⛓️ 装备护甲: {armor_str}",
             f"💕 婚姻状态: {marriage_status}"
         ]
+
+        # 如果发现异常，更新数据
+        if needs_update:
+            self.update_data(updates)
+            status.insert(1, "⚠️ 检测到玩家异常，已自动修正")
 
         # 如果装备了鱼竿，显示鱼竿信息
         if equipped_fishing_rod:

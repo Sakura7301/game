@@ -22,6 +22,7 @@ from bridge.reply import Reply, ReplyType
 from channel.chat_message import ChatMessage
 from bridge.context import ContextType, Context
 
+PLAYER_MAX_LEVEL = 81
 
 @plugins.register(
     name="Game",
@@ -116,7 +117,7 @@ class Game(Plugin):
                         ['治疗卷轴', '麻瓜总是很难理解卷轴上的符文到底是怎么发挥作用的，回复400点生命值', 'consumable', '400', '0', '0', '200', '4'],
                         ['原素瓶', '不死人的果粒橙，回复1000点生命值', 'consumable', '1000', '0', '0', '500', '5'],
                         ['杰克的酒', '卡塔利纳的杰克·巴尔多赠予的酒，非常好喝！回复2000点生命值', 'consumable', '2000', '0', '0', '1000', '5']
-                        ['女神的祝福', '来自太阳长女葛温德林的祝福，回复全部生命值', 'consumable', '9999', '0', '0', '2000', '5']
+                        ['女神的祝福', '来自太阳长女葛温德林的祝福，回复全部生命值', 'consumable', '99999', '0', '0', '2000', '5']
                     ]
                     writer.writerows(default_items)
 
@@ -1151,9 +1152,10 @@ class Game(Plugin):
             # 判断本次获得的经验是否足够升级
             if award_exp >= exp_required_to_level_up:
                 # 升级
-                new_level = int(player.level) + 1
+                if player.level < PLAYER_MAX_LEVEL:
+                    new_level = int(player.level) + 1
+                    level_up = True
                 new_exp = award_exp - exp_required_to_level_up
-                level_up = True
 
                 # 使用固定增长值
                 hp_increase = 50      # 每级+50血量
