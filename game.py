@@ -1782,9 +1782,9 @@ class Game(Plugin):
                 'inventory': player_2_items,  # _update_player_data会处理列表到JSON的转换
             })
 
-            result = f"{player_2.nickname} 获胜!\n{player_1.nickname} 赔偿 {penalty_gold} 金币"
+            result = f"{player_2.nickname} 获胜!\n{player_1.nickname} 赔偿 {penalty_gold} 金币\n"
             if lost_item:
-                result += f"\n{player_1_name} 的 {lost_item} 被 {player_2_name} 夺走！"
+                result += f"{player_1_name} 的 {lost_item} 被 {player_2_name} 夺走！\n"
 
         else:
             # 攻击玩家胜利
@@ -1814,14 +1814,14 @@ class Game(Plugin):
                 'inventory': player_1_items
             })
 
-            result = f"✌️ {player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币"
+            result = f"✌️ {player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币\n"
             if lost_item:
-                result += f"\n{player_2_name} 的 {lost_item} 被 {player_1_name} 夺走！"
+                result += f"{player_2_name} 的 {lost_item} 被 {player_1_name} 夺走！\n"
 
         # 向战斗结果中添加玩家和怪物造成的总伤害
         battle_log.append(f"\n伤害统计:")
         battle_log.append(f"{player_1_name}: {player_1_total_damage}")
-        battle_log.append(f"{player_2_name}: {player_2_total_damage}")
+        battle_log.append(f"{player_2_name}: {player_2_total_damage}\n")
 
         battle_log.append(result)
         return "\n".join(battle_log)
