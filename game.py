@@ -24,6 +24,10 @@ from channel.chat_message import ChatMessage
 from bridge.context import ContextType, Context
 
 PLAYER_MAX_LEVEL = 81
+PLAYER_UP_LEVEL_BASE_HP = 50
+PLAYER_UP_LEVEL_BASE_ATTACK = 10
+PLAYER_UP_LEVEL_BASE_DEFENSE = 10
+
 
 @plugins.register(
     name="Game",
@@ -66,7 +70,6 @@ class Game(Plugin):
 
             # 恢复游戏状态和定时任务
             self._restore_game_state()
-
             # 确保数据目录"""  """存在
             self.player_file = os.path.join(self.data_dir, "players.csv")
             self.shop_file = os.path.join(self.data_dir, "shop_items.csv")
@@ -1110,9 +1113,9 @@ class Game(Plugin):
                 new_exp = award_exp - exp_required_to_level_up
 
                 # 使用固定增长值
-                hp_increase = 50      # 每级+50血量
-                attack_increase = 10  # 每级+10攻击
-                defense_increase = 10 # 每级+10防御
+                hp_increase = PLAYER_UP_LEVEL_BASE_HP      # 每级+50血量
+                attack_increase = PLAYER_UP_LEVEL_BASE_ATTACK  # 每级+10攻击
+                defense_increase = PLAYER_UP_LEVEL_BASE_DEFENSE # 每级+10防御
 
                 new_max_hp = int(player.max_hp) + hp_increase
                 new_attack = int(player.attack) + attack_increase
