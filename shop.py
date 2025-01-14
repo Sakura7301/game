@@ -284,11 +284,11 @@ class Shop:
             stats = []
             # 将字符串转换为整数进行比较
             if int(details.get('hp', '0')) > 0:
-                stats.append(f"❤️生命+{details['hp']}")
+                stats.append(f"❤️回复{details['hp']}点生命值")
             if int(details.get('attack', '0')) > 0:
-                stats.append(f"⚔️攻击+{details['attack']}")
+                stats.append(f"⚔️攻击提升{details['attack']}%")
             if int(details.get('defense', '0')) > 0:
-                stats.append(f"🛡防御+{details['defense']}")
+                stats.append(f"🛡防御提升{details['defense']}%")
 
             stats_str = f"\n└─ {' '.join(stats)}" if stats else ""
             shop_list += f"🔸 {item_name}\n"
