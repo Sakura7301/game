@@ -783,11 +783,11 @@ class Player:
         status = [
             f"🏷️ 玩家: {self.nickname}",
             f"💰 金币: {self.gold}",
-            f"📊 等级: {self.level}",
-            f"✨ 经验: {self.exp}/{int(self.get_exp_for_next_level(self.level))}",
-            f"❤️ 生命值: {self.hp}/{self.max_hp}",  # 修改生命值显示
-            f"⚔️ 攻击力: {self.attack}",
-            f"🛡️ 防御力: {self.defense}",
+            f"📊 等级: {player_level}",
+            f"✨ 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
+            f"❤️ 生命值: {player_hp}/{player_max_hp}",  # 修改生命值显示
+            f"⚔️ 攻击力: {player_attack}",
+            f"🛡️ 防御力: {player_defense}",
             f"🗡️ 装备武器: {weapon_str}",
             f"⛓️ 装备护甲: {armor_str}",
             f"💕 婚姻状态: {marriage_status}"
