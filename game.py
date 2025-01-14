@@ -7,6 +7,7 @@ import random
 import random
 import plugins
 import shutil
+import secrets
 import datetime
 import threading
 from plugins import *
@@ -364,7 +365,7 @@ class Game(Plugin):
             "拒绝求婚": lambda i, n: self.reject_marriage(i),
             "离婚": lambda i, n: self.divorce(i),
             "挑战": lambda i, n: self.attack_player(i, content, msg),
-            "同意挑战": lambda i, n: self.accept_challenge(i),
+            "接受挑战": lambda i, n: self.accept_challenge(i),
             "拒绝挑战": lambda i, n: self.refuse_challenge(i),
             "开机": lambda i, n: self.toggle_game_system(i, 'start'),
             "关机": lambda i, n: self.toggle_game_system(i, 'stop'),
@@ -433,7 +434,7 @@ class Game(Plugin):
 🌄 外出 - 外出开始大富翁游戏
 🤺 冒险 - 冒险打怪升级
 👊 挑战 [@用户] - 向其他玩家发起挑战
-👌 同意挑战 - 同意其他玩家的挑战请求
+👌 接受挑战 - 同意其他玩家的挑战请求
 🫸 拒绝挑战 - 拒绝其他玩家的挑战请求
 🗺️ 地图 - 查看游戏地图
 
@@ -785,8 +786,9 @@ class Game(Plugin):
         # 校验传入的玩家等级合法性
         player_level = max(1, int(player.level))
 
-        # 设置随机种子为当前时间戳
-        random.seed(time.time())
+        # 使用毫秒级时间戳作为随机数种子
+        current_time_ms = int(time.time_ns())
+        random.seed(current_time_ms)
         # 怪物的等级随机(根据玩家等级上下浮动)
         random_level = random.randint(-2, 2)
         # 计算怪物等级
@@ -978,8 +980,6 @@ class Game(Plugin):
         player_attack = int(player.attack)
         player_defense = int(player.defense)
         player_name = player.nickname
-        # 减伤率为防御值的10%，最高不超过80%
-        player_damage_reduction = min(player_defense/1000, 0.8)
         player_total_damage = 0
 
         # 怪物属性
@@ -989,8 +989,6 @@ class Game(Plugin):
         monster_attack = monster['attack']
         monster_defense = monster['defense']
         monster_name = monster.get('name', '未知怪物')
-        # 减伤率为防御值的10%，最高不超过80%
-        monster_damage_reduction = min(monster_defense/1000, 0.8)
         monster_total_damage = 0
 
         #日志打印怪物属性
@@ -1013,31 +1011,7 @@ class Game(Plugin):
                 battle_log.append(f"\n第{round_num}回合")
 
             # 计算玩家伤害
-            player_damage = int(player_attack * (1- monster_damage_reduction))
-
-            # 伤害修正：确保减伤后伤害至少为1
-            player_damage = max(1, player_damage)
-
-            player_explain_str = ""
-
-            # 设置随机种子为当前时间戳
-            random.seed(time.time())
-            # 生成1到100之间的随机数
-            random_number = random.randint(1, 100)
-            if random_number > 80:
-                # 暴击
-                player_final_damage = int(player_damage * random.uniform(1.5, 1.8))
-                player_explain_str = "💥暴击！"
-            elif random_number < 20:
-                # 失手
-                player_final_damage = max(1, int(player_damage * random.uniform(0.5, 0.7)))
-                player_explain_str = "🤦‍♂️失手了！"
-            else:
-                # 正常命中
-                player_final_damage = int(player_damage)
-
-            # 确保最终伤害至少为1点
-            player_final_damage = max(1, player_final_damage)
+            player_final_damage, player_explain_str = self.damage_calculation(player_attack, monster_defense)
 
             # 减少怪物血量
             monster_hp -= player_final_damage
@@ -1064,29 +1038,7 @@ class Game(Plugin):
             # 怪物反击
             if monster_hp > 0:
                 # 计算怪物伤害
-                monster_damage = int(monster_attack * (1- player_damage_reduction))
-
-                # 确保减伤后伤害至少为1
-                monster_damage = max(1, monster_damage)
-
-                explain_str = ""
-
-                # 设置随机种子为当前时间戳
-                random.seed(time.time())
-                # 生成1到100之间的随机数
-                random_number = random.randint(1, 100)
-                if random_number > 80:
-                    # 暴击
-                    monster_final_damage = int(monster_damage * random.uniform(1.5, 1.8))
-                    explain_str = "💥暴击！"
-                elif random_number < 20:
-                    # 失手
-                    monster_final_damage = max(1, int(monster_damage * random.uniform(0.5, 0.7)))
-                    explain_str = "🤦‍♂️失手了！"
-                else:
-                    # 正常命中，应用随机波动
-                    monster_final_damage = int(monster_damage)
-
+                monster_final_damage, monster_explain_str = self.damage_calculation(monster_attack, player_defense)
                 # 减少玩家生命值
                 player_hp -= monster_final_damage
                 monster_total_damage += monster_final_damage
@@ -1095,15 +1047,13 @@ class Game(Plugin):
 
                 # 狂暴状态下吸血
                 if is_berserk:
-                    life_steal = int(monster_damage * 0.3)
+                    life_steal = int(monster_final_damage * 0.3)
                     monster_hp = min(monster_max_hp, monster_hp + life_steal)
                     if round_num <= 4:
-                        battle_log.append(f"{explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害，并吸取了 {life_steal} 点生命值")
+                        battle_log.append(f"{monster_explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害，并吸取了 {life_steal} 点生命值")
                 else:
                     if round_num <= 4:
-                        battle_log.append(f"{explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害")
-
-                logger.debug(f"\n-------------------------------------------------------------\n玩家[{player_name} 减伤：{player_damage_reduction}， 怪物[{monster_name}]减伤：{monster_damage_reduction}\n玩家在第{round_num}回合造成的实际伤害为：{player_final_damage}\n怪物在第{round_num}回合造成的实际伤害为：{monster_final_damage}，吸取血量：{life_steal}\n玩家剩余生命值：{player_hp}，怪物剩余生命值：{monster_hp}")
+                        battle_log.append(f"{monster_explain_str}{monster['name']}对你造成 {monster_final_damage} 点伤害")
 
             round_num += 1
 
@@ -1152,6 +1102,7 @@ class Game(Plugin):
             # 判断本次获得的经验是否足够升级
             if award_exp >= exp_required_to_level_up:
                 # 升级
+                new_level = int(player.level)
                 if player.level < PLAYER_MAX_LEVEL:
                     new_level = int(player.level) + 1
                     level_up = True
@@ -1167,7 +1118,7 @@ class Game(Plugin):
                 new_defense = int(player.defense) + defense_increase
             else :
                 # 不升级
-                new_level = player.level
+                new_level = int(player.level)
                 new_exp = player.exp + award_exp
                 new_max_hp = player.max_hp
                 new_attack = player.attack
@@ -1631,6 +1582,76 @@ class Game(Plugin):
 
         return f"您已经与所有配偶离婚"
 
+    def damage_calculation(self, attack, defense):
+        """计算造成的实际伤害"""
+        damage_reduction = min(defense/1000, 0.8)
+        damage = int(attack * (1- damage_reduction))
+        # 玩家1伤害修正：确保减伤后伤害至少为1
+        damage = max(1, damage)
+
+        explain_str = ""
+
+        # 使用当前时间作为随机数种子
+        current_time_ms = int(time.time_ns())
+        random.seed(current_time_ms)
+
+        # 生成1到100之间的随机数
+        random_num = random.randint(1, 100)
+
+        logger.info(f"随机数: {random_num}")
+
+        if random_num > 80:
+            # 暴击（20% 概率）
+            final_damage = int(damage * random.uniform(1.5, 1.8))
+            explain_str = "💥暴击！"
+        elif random_num < 20:
+            # 失手（20% 概率）
+            final_damage = max(1, int(damage * random.uniform(0.5, 0.7)))
+            explain_str = "🤦‍♂️失手了！"
+        else:
+            # 正常命中（60% 概率）
+            final_damage = int(damage)
+            explain_str = ""
+
+        # 确保最终伤害至少为1点
+        final_damage = max(1, final_damage)
+
+        return final_damage, explain_str
+
+    def calculate_compensation(self, round_num, total_money):
+        """
+        根据比赛的轮数与失败者的总金钱，计算赔付金额。
+        :param round_num: 比赛轮数 (int)
+        :param total_money: 总金钱 (float)
+        :return: 赔付金额 (float)
+        """
+        # 最高百分比 (10%) 和最低百分比 (1%)
+        max_rate = 10 / 100   # 10%
+        min_rate = 1 / 100    # 1%
+
+        # 计算当前轮数的赔付比例
+        # 每轮减少 0.5%，即 (round_num - 1) * 0.5%
+        current_rate = max_rate - (round_num - 1) * 0.5 / 100
+
+        # 确保赔付比例不低于最低百分比
+        compensation_rate = max(current_rate, min_rate)
+
+        # 根据比例计算赔付金额
+        compensation_amount = total_money * compensation_rate
+
+        return round(compensation_amount, 2)  # 保留两位小数
+
+    def random_boolean(self):
+        """
+        使用当前时间作为随机数种子，随机返回 True 或 False。
+        """
+        # 使用当前时间作为随机数种子
+        current_time_ms = int(time.time_ns())
+        random.seed(current_time_ms)
+
+        # 随机生成 True 或 False
+        return random.choice([True, False])
+
     def pvp_combat(self, player_1: Player, player_2: Player) -> str:
         """PVP战斗"""
         # 攻击玩家属性
@@ -1640,6 +1661,7 @@ class Game(Plugin):
         player_1_attack = int(player_1.attack)
         player_1_defense = int(player_1.defense)
         player_1_name = player_1.nickname
+        player_1_total_damage = 0
 
         # 目标玩家属性
         player_2_level = player_2.level
@@ -1648,90 +1670,83 @@ class Game(Plugin):
         player_2_attack = int(player_2.attack)
         player_2_defense = int(player_2.defense)
         player_2_name = player_2.nickname
+        player_2_total_damage = 0
 
         # 更新战斗日志显示
         battle_log = [
             "同意挑战！\n⚔️ PVP战斗开始 ⚔️\n",
-            f"[{player_1_name}] Lv.{player_1_level}\n❤️[{player_1_hp/player_1_max_hp}]\n⚔️[{player_1_attack}]\n🛡️[{str(player_1_defense)}]",
+            f"[{player_1_name}] Lv.{player_1_level}\n❤️[{player_1_hp}/{player_1_max_hp}]\n⚔️[{player_1_attack}]\n🛡️[{str(player_1_defense)}]",
             f"VS\n",
-            f"[{player_2_name}] Lv.{player_2_level}\n❤️[{player_2_hp/player_2_max_hp}]\n⚔️[{player_2_attack}]\n🛡️[{str(player_2_defense)}]"
+            f"[{player_2_name}] Lv.{player_2_level}\n❤️[{player_2_hp}/{player_2_max_hp}]\n⚔️[{player_2_attack}]\n🛡️[{str(player_2_defense)}]"
         ]
 
         # 战斗逻辑
         round_num = 1
         while player_1_hp > 0 and player_2_hp > 0:
-
-            # 减伤率为防御值的10%，最高不超过80%
-            player_2_damage_reduction = min(player_2_defense/1000, 0.8)
-            player_1_damage = int(player_1_attack * (1- player_2_damage_reduction))
-
-            # 伤害修正：确保减伤后伤害至少为1
-            player_1_damage = max(1, player_1_damage)
-
-            player_1_explain_str = ""
-
-            # 应用随机因素
-            rand_val = random.random()
-            if rand_val < 0.2:
-                # 暴击
-                player_1_final_damage = int(player_1_damage * random.uniform(1.5, 1.8))
-                player_1_explain_str = "💥暴击！"
-            elif rand_val < 0.2:
-                # 失手
-                player_1_final_damage = max(1, int(player_1_damage * random.uniform(0.5, 0.7)))
-                player_1_explain_str = "🤦‍♂️失手了！"
-            else:
-                # 正常命中
-                player_1_final_damage = int(player_1_damage)
-
-            # 确保最终伤害至少为1点
-            player_1_final_damage = max(1, player_1_final_damage)
-
-            # 减少目标玩家血量
-            player_2_hp -= player_1_final_damage
-
-            # 减伤率为防御值的10%，最高不超过80%
-            player_1_damage_reduction = min(player_1_defense/1000, 0.8)
-            player_2_damage = int(player_2_attack * (1- player_1_damage_reduction))
-
-            # 伤害修正：确保减伤后伤害至少为1
-            player_2_damage = max(1, player_2_damage)
-
-            player_2_explain_str = ""
-
-            # 应用随机因素
-            rand_val = random.random()
-            if rand_val < 0.2:
-                # 暴击
-                player_2_final_damage = int(player_2_damage * random.uniform(1.5, 1.8))
-                player_2_explain_str = "💥暴击！"
-            elif rand_val < 0.2:
-                # 失手
-                player_2_final_damage = max(1, int(player_2_damage * random.uniform(0.5, 0.7)))
-                player_2_explain_str = "🤦‍♂️失手了！"
-            else:
-                # 正常命中
-                player_2_final_damage = int(player_2_damage)
-
-            # 确保最终伤害至少为1点
-            player_2_final_damage = max(1, player_2_final_damage)
-
-            # 减少攻击玩家血量
-            player_1_hp -= player_2_final_damage
-
-            # 记录战斗日志（前4回合）
             if round_num <= 4:
                 battle_log.append(f"\n第{round_num}回合")
-                battle_log.append(f"{player_1_explain_str}{player_1_name}对{player_2_name}造成 {player_1_final_damage} 点伤害")
-                battle_log.append(f"{player_2_explain_str}{player_2_name}对{player_1_name}造成 {player_2_final_damage} 点伤害")
 
+            # 计算玩家1的本轮造成伤害
+            player_1_final_damage, player_1_explain_str = self.damage_calculation(player_1_attack, player_2_defense)
+            # 计算玩家2的本轮造成伤害
+            player_2_final_damage, player_2_explain_str = self.damage_calculation(player_2_attack, player_1_defense)
+
+            player_1_on_the_offensive = self.random_boolean()
+
+            if player_1_on_the_offensive:
+                # ---------玩家1先手---------
+                # 减少目标玩家血量
+                player_2_hp -= player_1_final_damage
+                # 统计玩家1伤害
+                player_1_total_damage += player_1_final_damage
+                # 记录战斗日志（前4回合）
+                if round_num <= 4:
+                    battle_log.append(f"{player_1_explain_str}{player_1_name}对{player_2_name}造成 {player_1_final_damage} 点伤害")
+                # 检查玩家2是否已被击败
+                if player_2_hp <= 0:
+                    battle_log.append(f"\n{player_2_name}被打败了！")
+                    break
+
+                # 减少攻击玩家血量
+                player_1_hp -= player_2_final_damage
+                # 统计玩家2伤害
+                player_2_total_damage += player_2_final_damage
+                # 记录战斗日志（前4回合）
+                if round_num <= 4:
+                    battle_log.append(f"{player_2_explain_str}{player_2_name}对{player_1_name}造成 {player_2_final_damage} 点伤害")
+                # 检查玩家1是否已被击败
+                if player_1_hp <= 0:
+                    battle_log.append(f"\n{player_1_name}被打败了！")
+                    break
+            else:
+                # ---------玩家2先手---------
+                # 减少攻击玩家血量
+                player_1_hp -= player_2_final_damage
+                # 统计玩家2伤害
+                player_2_total_damage += player_2_final_damage
+                # 记录战斗日志（前4回合）
+                if round_num <= 4:
+                    battle_log.append(f"{player_2_explain_str}{player_2_name}对{player_1_name}造成 {player_2_final_damage} 点伤害")
+                # 检查玩家1是否已被击败
+                if player_1_hp <= 0:
+                    battle_log.append(f"\n{player_1_name}被打败了！")
+                    break
+
+                # 减少目标玩家血量
+                player_2_hp -= player_1_final_damage
+                # 统计玩家1伤害
+                player_1_total_damage += player_1_final_damage
+                # 记录战斗日志（前4回合）
+                if round_num <= 4:
+                    battle_log.append(f"{player_1_explain_str}{player_1_name}对{player_2_name}造成 {player_1_final_damage} 点伤害")
+                # 检查玩家2是否已被击败
+                if player_2_hp <= 0:
+                    battle_log.append(f"\n{player_2_name}被打败了！")
+                    break
             round_num += 1
-            if round_num > 10:  # 限制最大回合数
-                break
 
-        # 计算惩罚金币比例(回合数越多惩罚越少)
-        penalty_rate = max(0.1, 0.3 - (round_num - 1) * 0.05)  # 每回合减少5%,最低10%
-        battle_log.append("\n战斗结果:")
+        # 战斗结束
+        battle_log.append(f"\n战斗持续了{round_num}回合")
 
         # 直接使用inventory列表
         player_1_items = None
@@ -1744,9 +1759,8 @@ class Game(Plugin):
         if player_1_hp <= 0:
             # 目标玩家胜利
             # 扣除金币
-            player_1_gold = int(player_1.gold)
-            penalty_gold = int(player_1_gold * penalty_rate)
-            new_player_1_gold = player_1_gold - penalty_gold
+            penalty_gold = int(self.calculate_compensation(round_num, player_1.gold))
+            new_player_1_gold = int(player_1.gold) - penalty_gold
             new_player_2_gold = int(player_2.gold) + penalty_gold
 
             # 随机赔付一件物品给对方
@@ -1775,9 +1789,8 @@ class Game(Plugin):
         else:
             # 攻击玩家胜利
             # 扣除金币
-            player_2_gold = int(player_2.gold)
-            penalty_gold = int(player_2_gold * penalty_rate)
-            new_player_2_gold = player_2_gold - penalty_gold
+            penalty_gold = self.calculate_compensation(round_num, player_2.gold)
+            new_player_2_gold = int(player_2.gold) - penalty_gold
             new_player_1_gold = int(player_1.gold) + penalty_gold
 
             # 随机赔付一件物品给对方
@@ -1801,9 +1814,14 @@ class Game(Plugin):
                 'inventory': player_1_items
             })
 
-            result = f"{player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币"
+            result = f"✌️ {player_1_name} 获胜!\n{player_2.nickname} 赔偿 {penalty_gold} 金币"
             if lost_item:
                 result += f"\n{player_2_name} 的 {lost_item} 被 {player_1_name} 夺走！"
+
+        # 向战斗结果中添加玩家和怪物造成的总伤害
+        battle_log.append(f"\n伤害统计:")
+        battle_log.append(f"{player_1_name}: {player_1_total_damage}")
+        battle_log.append(f"{player_2_name}: {player_2_total_damage}")
 
         battle_log.append(result)
         return "\n".join(battle_log)
@@ -1847,7 +1865,7 @@ class Game(Plugin):
             'challenge_proposal': user_id
         })
 
-        return f"您向 {target_name} 发起了挑战请求，等待对方回应"
+        return f"您向 {target_name} 发起了挑战请求，等待对方回应。被挑战的玩家可以发送 '接受挑战' 或 '拒绝挑战' 来决定是否开始PVP游戏。"
 
     def refuse_challenge(self, user_id):
         """拒绝挑战"""
@@ -1876,7 +1894,7 @@ class Game(Plugin):
         return f"您拒绝了 {proposal} 的挑战请求"
 
     def accept_challenge(self, user_id):
-        """同意挑战"""
+        """接受挑战"""
         player = self.get_player(user_id)
         if not player:
             return "您还没有注册游戏"
@@ -2571,9 +2589,9 @@ class Game(Plugin):
         if player_gold < amount:
             return f"您的本金不足，无法进行下注。\n您的余额：{player_gold} 金币"
 
-        # 设置随机数种子为当前时间
-        current_time = time.time()
-        random.seed(current_time)
+        # 使用当前时间作为随机数种子
+        current_time_ms = int(time.time_ns())
+        random.seed(current_time_ms)
 
         # 模拟掷三颗骰子
         dice = [random.randint(1, 6) for _ in range(3)]
