@@ -421,10 +421,10 @@ class Player:
             'level': '1',
             'last_checkin': '',
             'inventory': '[]',
-            'hp': '100',
-            'max_hp': '100',
+            'hp': '200',
+            'max_hp': '200',
             'attack': '10',
-            'defense': '5',
+            'defense': '10',
             'exp': '0',
             'last_fishing': '',
             'rod_durability': '{}',
@@ -733,7 +733,7 @@ class Player:
             needs_update = True
 
         # 理论血量上限
-        theory_max_hp = int((player_level * 50) * (1 + hp_bonus/100))
+        theory_max_hp = int((player_level * 50) * (1 + hp_bonus/100)) + 200
         # 检查玩家血量上限是否符合预期
         if player_max_hp != theory_max_hp:
             # 血量上限异常，需要修正
@@ -744,7 +744,7 @@ class Player:
             needs_update = True
 
         # 理论攻击力
-        theory_attack = int((player_level * 10) * (1 + attack_bonus/100))
+        theory_attack = int((player_level * 10) * (1 + attack_bonus/100)) + 10
         # 检查玩家攻击力是否符合预期
         if player_attack != theory_attack:
             # 攻击力异常，需要修正
@@ -752,7 +752,7 @@ class Player:
             needs_update = True
 
         # 理论防御力
-        theory_defense = int((player_level * 10) * (1 + defense_bonus/100))
+        theory_defense = int((player_level * 10) * (1 + defense_bonus/100)) + 10
         # 检查玩家防御力是否符合预期
         if player_defense != theory_defense:
             # 防御力异常，需要修正

@@ -55,14 +55,14 @@ class Equipment:
         if item_type == 'weapon':
             updates['equipped_weapon'] = item_name
             # 新的攻击力 = 固定攻击力 * 装备加成
-            new_attack = int((player.level * 10) * (1 + self.get_attack_by_weapon_name(item_name)/100))
+            new_attack = int((player.level * 10) * (1 + self.get_attack_by_weapon_name(item_name)/100)) + 10
             # 新的生命值(武器不提供生命加成，无需重复计算)
         else:
             updates['equipped_armor'] = item_name
             # 新的防御力 = 固定防御力 * 装备加成
-            new_defense = int((player.level * 10) * (1 + self.get_defense_by_armor_name(item_name)/100))
+            new_defense = int((player.level * 10) * (1 + self.get_defense_by_armor_name(item_name)/100)) + 10
             # 新的生命值
-            new_max_hp = int(player.level * 50 * (1 + self.get_hp_by_armor_name(item_name)/100))
+            new_max_hp = int(player.level * 50 * (1 + self.get_hp_by_armor_name(item_name)/100)) + 200
             # 调整当前血量
             if player.hp > new_max_hp:
                 new_hp = new_max_hp

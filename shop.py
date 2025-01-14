@@ -284,7 +284,10 @@ class Shop:
             stats = []
             # 将字符串转换为整数进行比较
             if int(details.get('hp', '0')) > 0:
-                stats.append(f"❤️回复{details['hp']}点生命值")
+                if details.get('type', '') == 'armor':
+                    stats.append(f"❤️生命上限提升{details['hp']}%")
+                else:
+                    stats.append(f"❤️回复{details['hp']}点生命值")
             if int(details.get('attack', '0')) > 0:
                 stats.append(f"⚔️攻击提升{details['attack']}%")
             if int(details.get('defense', '0')) > 0:
