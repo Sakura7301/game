@@ -71,7 +71,10 @@ class FishingSystem:
                 '金制鱼竿': 1.5
             }[rod]
 
+            # 计算金币奖励
             coins_reward = max(1, int(base_reward * rod_bonus))
+            # 计算经验奖励
+            exp_reward = int(coins_reward * 0.8)
 
             # 生成钓鱼信息
             fishing_messages = [
@@ -94,6 +97,7 @@ class FishingSystem:
             message += f"💰 基础价值: {caught_fish.get('price', '0')}金币\n"
             message += f"🎯 鱼竿加成: x{rod_bonus} ({rod})\n"
             message += f"🪙 金币奖励: {coins_reward}金币\n"
+            message += f"📚 经验奖励: {coins_reward}经验\n"
             message += f"⚡ 耐久消耗: -{durability_cost} ({remaining_durability}/100)\n"
             message += f"🎲 当前幸运值: {base_chance*100:.0f}%\n"
             message += f"━━━━━━━━━━━━━"
@@ -103,6 +107,7 @@ class FishingSystem:
                 'fish': caught_fish,
                 'durability_cost': durability_cost,
                 'coins_reward': coins_reward,
+                'exp': exp_reward,
                 'message': message
             }
         else:

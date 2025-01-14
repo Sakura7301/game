@@ -566,6 +566,7 @@ class Game(Plugin):
             # 添加金币奖励
             new_gold = int(player.gold) + result['coins_reward']
             updates['gold'] = str(new_gold)
+            updates['exp'] = str(int(player.exp) + result['exp'])
             message = result['message']  # 使用钓鱼系返回的完整消息
         else:
             message = result['message']

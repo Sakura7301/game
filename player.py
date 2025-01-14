@@ -691,6 +691,9 @@ class Player:
         equipped_weapon = self.equipped_weapon
         equipped_armor = self.equipped_armor
         equipped_fishing_rod = self.equipped_fishing_rod
+        hp_bonus = 0
+        attack_bonus = 0
+        defense_bonus = 0
 
         # 获取武器加成
         if equipped_weapon and equipped_weapon in items_info:
@@ -702,6 +705,7 @@ class Player:
             if weapon_info.get('defense', '0') != '0':
                 weapon_stats.append(f"🛡️:{weapon_info['defense']}%")
             weapon_str = f"{equipped_weapon}({', '.join(weapon_stats)})" if weapon_stats else equipped_weapon
+            attack_bonus = int(weapon_info['attack'])
         else:
             weapon_str = "无"
 
@@ -716,6 +720,8 @@ class Player:
             if armor_info.get('hp', '0') != '0':
                 armor_stats.append(f"❤️:{armor_info['hp']}%")
             armor_str = f"{equipped_armor}({', '.join(armor_stats)})" if armor_stats else equipped_armor
+            defense_bonus = int(armor_info['defense'])
+            hp_bonus = int(armor_info['hp'])
         else:
             armor_str = "无"
 
@@ -727,7 +733,7 @@ class Player:
             needs_update = True
 
         # 理论血量上限
-        theory_max_hp = int((player_level * 50) * (1 + int(armor_info['hp'])/100))
+        theory_max_hp = int((player_level * 50) * (1 + hp_bonus/100))
         # 检查玩家血量上限是否符合预期
         if player_max_hp != theory_max_hp:
             # 血量上限异常，需要修正
@@ -738,7 +744,7 @@ class Player:
             needs_update = True
 
         # 理论攻击力
-        theory_attack = int((player_level * 10) * (1 + int(weapon_info['attack'])/100))
+        theory_attack = int((player_level * 10) * (1 + attack_bonus/100))
         # 检查玩家攻击力是否符合预期
         if player_attack != theory_attack:
             # 攻击力异常，需要修正
@@ -746,7 +752,7 @@ class Player:
             needs_update = True
 
         # 理论防御力
-        theory_defense = int((player_level * 10) * (1 + int(armor_info['defense'])/100))
+        theory_defense = int((player_level * 10) * (1 + defense_bonus/100))
         # 检查玩家防御力是否符合预期
         if player_defense != theory_defense:
             # 防御力异常，需要修正
