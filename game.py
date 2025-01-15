@@ -343,7 +343,7 @@ class Game(Plugin):
         # 修改这里：更新 lambda 函数定义，使其接受两个参数
         cmd_handlers = {
             "注册": lambda i, n: self.register_player(i, n),
-            "注销": lambda i, n: self.unregister_player(i),
+            "注销": lambda i, n: self.unregister_player(i, content),
             "状态": lambda i, n: self.get_player_status(i),
             "个人状态": lambda i, n: self.get_player_status(i),
             "签到": lambda i, n: self.daily_checkin(i),
@@ -509,15 +509,23 @@ class Game(Plugin):
             logger.error(f"注册玩家出错: {e}")
             return "注册失败，请稍后再试"
 
-    def unregister_player(self, user_id):
+    def unregister_player(self, user_id, content=""):
         """
             注销玩家
 
             Args:
                 user_id: 玩家ID
         """
+
+        if content != "注销":
+            return "你没资格替别人注销！"
+
         if not user_id:
             return "无法获取您的ID，请确保ID已设置"
+
+        player = self.get_player(user_id)
+        if not player:
+            return "您还没注册,请先注册 "
 
         # 检查是否已注册
         if not self.get_player(user_id):
