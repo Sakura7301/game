@@ -14,7 +14,8 @@ PLAYER_BASE_HP = 200
 PLAYER_BASE_MAX_HP = 200
 PLAYER_BASE_ATTACK = 20
 PLAYER_BASE_DEFENSE = 20
-PLAYER_BASE_EXP = 0
+PLAYER_BASE_EXP = 200
+PLAYER_BASE_RATE_OF_EXP = 1.5
 
 
 class Player:
@@ -430,7 +431,7 @@ class Player:
             'max_hp': PLAYER_BASE_MAX_HP,
             'attack': PLAYER_BASE_ATTACK,
             'defense': PLAYER_BASE_DEFENSE,
-            'exp': PLAYER_BASE_EXP,
+            'exp': '0',
             'last_fishing': '',
             'rod_durability': '{}',
             'equipped_weapon': '',
@@ -654,7 +655,7 @@ class Player:
         except Exception as e:
             logger.error(f"创建数据备份失败: {e}")
 
-    def get_exp_for_next_level(self, level, base_exp=200, growth_factor=2):
+    def get_exp_for_next_level(self, level, base_exp=PLAYER_BASE_EXP, growth_factor=PLAYER_BASE_RATE_OF_EXP):
         """
         计算当前等级升级到下一等级所需的经验值
         :param level: 当前等级 (int)
