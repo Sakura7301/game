@@ -335,7 +335,7 @@ class Game(Plugin):
         if not current_id:
             return "无法获取您的ID，请确保ID已设置"
 
-        if not self.game_status and content not in ['注册', '开机', '关机', '充值', '定时', '查看定时', '取消定时', '清空定时']:
+        if not self.game_status and content not in ['注册', '注销', '开机', '关机', '充值', '定时', '查看定时', '取消定时', '清空定时']:
             return "游戏系统当前已关闭"
 
         logger.debug(f"当前用户信息 - current_id: {current_id}")
@@ -343,6 +343,7 @@ class Game(Plugin):
         # 修改这里：更新 lambda 函数定义，使其接受两个参数
         cmd_handlers = {
             "注册": lambda i, n: self.register_player(i, n),
+            "注销": lambda i, n: self.unregister_player(i),
             "状态": lambda i, n: self.get_player_status(i),
             "个人状态": lambda i, n: self.get_player_status(i),
             "签到": lambda i, n: self.daily_checkin(i),
@@ -411,6 +412,7 @@ class Game(Plugin):
 基础指令
 ————————————
 📝 注册 - 注册新玩家
+🚪 注销 - 注销你的账号
 📊 状态 - 查看当前状态
 📅 签到 - 每日签到领取金币
 
@@ -506,6 +508,39 @@ class Game(Plugin):
         except Exception as e:
             logger.error(f"注册玩家出错: {e}")
             return "注册失败，请稍后再试"
+
+    def unregister_player(self, user_id):
+        """
+            注销玩家
+
+            Args:
+                user_id: 玩家ID
+        """
+        if not user_id:
+            return "无法获取您的ID，请确保ID已设置"
+
+        # 检查是否已注册
+        if not self.get_player(user_id):
+            return "未找到该玩家，请确认ID是否正确"
+
+        try:
+            # 读取所有玩家数据
+            with open(self.player_file, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f, fieldnames=self.STANDARD_FIELDS)
+                players = list(reader)
+
+            # 过滤掉要删除的玩家
+            updated_players = [player for player in players if player['user_id'] != str(user_id)]
+
+            # 将更新后的数据写回文件
+            with open(self.player_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=self.STANDARD_FIELDS)
+                writer.writerows(updated_players)
+
+            return "注销成功！"
+        except Exception as e:
+            logger.error(f"注销玩家出错: {e}")
+            return "注销失败，请稍后再试"
 
     def get_player(self, user_id) -> Optional[Player]:
         """获取玩家数据"""
