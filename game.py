@@ -4,7 +4,6 @@ import csv
 import json
 import time
 import random
-import random
 import plugins
 import shutil
 import secrets
@@ -1225,6 +1224,9 @@ class Game(Plugin):
         player = self.get_player(user_id)
         if not player:
             return "您还没注册,请先注册 "
+
+        if player.hp == player.max_hp:
+            return "您的生命值已满，无需回复。"
 
         # 获取物品信息
         items = self.get_shop_items()
