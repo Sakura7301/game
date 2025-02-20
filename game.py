@@ -2632,9 +2632,9 @@ class Game(Plugin):
         odds = {
             '大': 1,       # 赔率 1:1
             '小': 1,       # 赔率 1:1
-            '豹子': 30,    # 赔率 30:1
-            '顺子': 5,      # 赔率 5:1
-            '对子': 2      # 赔率 2:1
+            '豹子': 35,    # 赔率 35:1
+            '顺子': 8,      # 赔率 8:1
+            '对子': 1.4      # 赔率 1.4:1
         }
 
         DICE_EMOJI = {
@@ -2682,19 +2682,19 @@ class Game(Plugin):
         if bet_type == '大':
             if 11 <= total <= 18:
                 win = True
-                payout = amount * odds[bet_type]
+                payout = int(amount * odds[bet_type])
         elif bet_type == '小':
             if 3 <= total <= 10:
                 win = True
-                payout = amount * odds[bet_type]
+                payout = int(amount * odds[bet_type])
         elif bet_type == '豹子':
             if dice[0] == dice[1] == dice[2]:
                 win = True
-                payout = amount * odds[bet_type]
+                payout = int(amount * odds[bet_type])
         elif bet_type == '对子':
             if (dice[0] == dice[1]) or (dice[1] == dice[2]) or (dice[0] ==dice[2]):
                 win = True
-                payout = amount * odds[bet_type]
+                payout = int(amount * odds[bet_type])
         elif bet_type == '顺子':
             # 列出所有有效的顺子组合，包括循环顺子
             valid_straights = [
@@ -2709,7 +2709,7 @@ class Game(Plugin):
             sorted_dice = sorted(dice)
             if sorted_dice in valid_straights:
                 win = True
-                payout = amount * odds[bet_type]
+                payout = int(amount * odds[bet_type])
 
         # 计算结果
         if win:
