@@ -983,7 +983,7 @@ class Game(Plugin):
                             result.append(f"💸 失去 {abs(value)} 金币")
                     elif key == 'hp':
                         # 血量变化
-                        if updates_info['hp']:
+                        if 'hp' in updates_info:
                             player_hp = updates_info['hp']
                         else:
                             player_hp = player.hp
