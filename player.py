@@ -1,37 +1,30 @@
-import os
 import csv
 import json
-import time
-import shutil
 import logging
-from datetime import datetime
-from collections import Counter
+from . import constants
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
-PLAYER_MAX_LEVEL = 81
-PLAYER_BASE_HP = 200
-PLAYER_BASE_MAX_HP = 200
-PLAYER_BASE_ATTACK = 20
-PLAYER_BASE_DEFENSE = 20
-PLAYER_BASE_EXP = 200
-PLAYER_BASE_RATE_OF_EXP = 1.5
 
 
 class Player:
+    game = None
     """玩家类,用于管理玩家属性和状态"""
-    def __init__(self, data: Dict[str, Any], player_file: str = None, standard_fields: list = None):
+    def __init__(self, data: Dict[str, Any]):
         if not isinstance(data, dict):
             raise TypeError("data must be a dictionary")
         self.data = data
-        self.player_file = player_file
-        self.standard_fields = standard_fields
 
-        # 清理耐久度为0的记录
-        if 'rod_durability' in self.data:
-            rod_durability = json.loads(self.data['rod_durability'])
-            cleaned_durability = {rod: durability for rod, durability in rod_durability.items() if int(durability) > 0}
-            self.data['rod_durability'] = json.dumps(cleaned_durability)
+    @classmethod
+    def set_game_handle(self, game):
+        # 检查是否已经初始化
+        if self.game is None:
+            self.game = game
+
+    @classmethod
+    def get_game_handle(self):
+        # 提供访问共享数据的方法
+        return self.game
 
     @property
     def user_id(self) -> str:
@@ -80,6 +73,21 @@ class Player:
             logging.error(f"设置 level 时出错: {e}，不更新该值")
 
     @property
+    def sign_in_timestamp(self) -> int:
+        try:
+            return int(self.data.get('sign_in_timestamp', 1))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 sign_in_timestamp 时出错: {e}，返回默认值 1")
+            return 1
+
+    @sign_in_timestamp.setter
+    def sign_in_timestamp(self, value: int):
+        try:
+            self.data['sign_in_timestamp'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 sign_in_timestamp 时出错: {e}，不更新该值")
+
+    @property
     def hp(self) -> int:
         try:
             return int(self.data.get('hp', 100))
@@ -91,6 +99,8 @@ class Player:
     def hp(self, value: int):
         try:
             self.data['hp'] = str(int(value))
+            if int(self.data['hp']) < 0:
+                self.data['hp'] = str(0)
         except (ValueError, TypeError) as e:
             logging.error(f"设置 hp 时出错: {e}，不更新该值")
 
@@ -158,21 +168,70 @@ class Player:
             self.data['exp'] = '0'
 
     @property
-    def inventory(self) -> list:
-        inventory_str = self.data.get('inventory', '[]')
+    def max_exp(self) -> int:
+        """获取经验值，确保返回整数"""
         try:
-            return json.loads(inventory_str)
-        except json.JSONDecodeError as e:
-            logging.error(f"JSON解析错误: {e}，Inventory内容: {inventory_str}")
-            return []  # 返回一个空列表或其他默认值
-        except Exception as e:
-            logging.error(f"解析 inventory 时出错: {e}，返回默认值 []")
-            return []
+            return int(float(self.data.get('max_exp', '0')))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 max_exp 时出错: {e}，返回默认值 0")
+            return 0
+
+    @max_exp.setter
+    def max_exp(self, value: int):
+        """设置经验值，确保存储为整数字符串"""
+        try:
+            self.data['max_exp'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 max_exp 时出错: {e}，设置为 0")
+            self.data['max_exp'] = '0'
+
+    @property
+    def inventory(self) -> dict:
+        """
+        获取库存信息，以字典形式返回。
+        字典的键为物品的名称，值为物品的详细信息。
+        """
+        inventory_data = self.data.get('inventory', {})  # 默认值是空字典
+
+        # 如果从 data 中获取的 inventory 数据是字符串，尝试解析它
+        if isinstance(inventory_data, str):
+            try:
+                inventory = json.loads(inventory_data)
+                if isinstance(inventory, dict):
+                    return inventory
+                else:
+                    logging.error(f"Inventory 不是字典类型: {inventory_data}")
+                    return {}
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON解析错误: {e}，Inventory内容: {inventory_data}")
+                return {}
+
+        # 如果 inventory_data 已经是字典，直接返回
+        elif isinstance(inventory_data, dict):
+            return inventory_data
+        else:
+            logging.error(f"获取的 inventory 不是字符串或字典类型: {type(inventory_data)}")
+            return {}
 
     @inventory.setter
-    def inventory(self, value: list):
+    def inventory(self, value: dict):
+        """
+        设置库存信息，接受一个字典类型的参数。
+        字典的键应为物品的名称，值为物品的详细信息。
+        """
+        if not isinstance(value, dict):
+            logging.error(f"设置 inventory 时出错: 期望字典类型，但收到 {type(value)}")
+            return  # 不更新该值
+
+        # 验证每个物品的结构
+        for name, item in value.items():
+            if not isinstance(item, dict):
+                logging.error(f"物品 '{name}' 的值不是字典类型: {item}，不更新该值！")
+                return  # 不更新该值
+
+        # 尝试序列化为 JSON 字符串并更新
         try:
-            self.data['inventory'] = json.dumps(value)
+            self.data['inventory'] = json.dumps(value, ensure_ascii=False)
         except (TypeError, ValueError) as e:
             logging.error(f"设置 inventory 时出错: {e}，不更新该值")
 
@@ -205,36 +264,6 @@ class Player:
             self.data['equipped_armor'] = value
         except Exception as e:
             logging.error(f"设置 equipped_armor 时出错: {e}，不更新该值")
-
-    @property
-    def spouse(self) -> str:
-        try:
-            return self.data.get('spouse', '')
-        except Exception as e:
-            logging.error(f"获取 spouse 时出错: {e}")
-            return ''
-
-    @spouse.setter
-    def spouse(self, value: str):
-        try:
-            self.data['spouse'] = value
-        except Exception as e:
-            logging.error(f"设置 spouse 时出错: {e}，不更新该值")
-
-    @property
-    def marriage_proposal(self) -> str:
-        try:
-            return self.data.get('marriage_proposal', '')
-        except Exception as e:
-            logging.error(f"获取 marriage_proposal 时出错: {e}")
-            return ''
-
-    @marriage_proposal.setter
-    def marriage_proposal(self, value: str):
-        try:
-            self.data['marriage_proposal'] = value
-        except Exception as e:
-            logging.error(f"设置 marriage_proposal 时出错: {e}，不更新该值")
 
     @property
     def challenge_proposal(self) -> str:
@@ -282,19 +311,84 @@ class Player:
             logging.error(f"设置 adventure_last_attack 时出错: {e}，不更新该值")
 
     @property
-    def last_checkin(self) -> str:
-        try:
-            return self.data.get('last_checkin', '')
-        except Exception as e:
-            logging.error(f"获取 last_checkin 时出错: {e}")
-            return ''
+    def equipment_fishing_rod(self) -> dict:
+        """
+        获取库存信息，以字典形式返回。
+        字典的键为物品的名称，值为物品的详细信息。
+        """
+        equipment_fishing_rod_data = self.data.get('equipment_fishing_rod', {})  # 默认值是空字典
 
-    @last_checkin.setter
-    def last_checkin(self, value: str):
+        # 如果从 data 中获取的 equipment_fishing_rod 数据是字符串，尝试解析它
+        if isinstance(equipment_fishing_rod_data, str):
+            try:
+                equipment_fishing_rod = json.loads(equipment_fishing_rod_data)
+                if isinstance(equipment_fishing_rod, dict):
+                    return equipment_fishing_rod
+                else:
+                    logging.error(f"equipment_fishing_rod 不是字典类型: {equipment_fishing_rod_data}")
+                    return {}
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON解析错误: {e}，equipment_fishing_rod内容: {equipment_fishing_rod_data}")
+                return {}
+
+        # 如果 equipment_fishing_rod_data 已经是字典，直接返回
+        elif isinstance(equipment_fishing_rod_data, dict):
+            return equipment_fishing_rod_data
+        else:
+            logging.error(f"获取的 equipment_fishing_rod 不是字符串或字典类型: {type(equipment_fishing_rod_data)}")
+            return {}
+
+    @equipment_fishing_rod.setter
+    def equipment_fishing_rod(self, value: dict):
+        """
+        设置库存信息，接受一个字典类型的参数。
+        字典的键应为物品的名称，值为物品的详细信息。
+        """
+        if not isinstance(value, dict):
+            logging.error(f"设置 equipment_fishing_rod 时出错: 期望字典类型，但收到 {type(value)}")
+            return  # 不更新该值
+
+        # 验证每个物品的结构
+        for name, item in value.items():
+            if not isinstance(item, dict):
+                logging.error(f"物品 '{name}' 的值不是字典类型: {item}，不更新该值！")
+                return  # 不更新该值
+
+        # 尝试序列化为 JSON 字符串并更新
         try:
-            self.data['last_checkin'] = value
-        except Exception as e:
-            logging.error(f"设置 last_checkin 时出错: {e}，不更新该值")
+            self.data['equipment_fishing_rod'] = json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            logging.error(f"设置 equipment_fishing_rod 时出错: {e}，不更新该值")
+
+    @property
+    def equipment_armor(self) -> str:
+        try:
+            return self.data.get('equipment_armor', '')
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 equipment_armor 时出错: {e}，返回默认值 0")
+            return 0
+
+    @equipment_armor.setter
+    def equipment_armor(self, value: str):
+        try:
+            self.data['equipment_armor'] = value
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 equipment_armor 时出错: {e}，不更新该值")
+
+    @property
+    def equipment_weapon(self) -> str:
+        try:
+            return self.data.get('equipment_weapon', '')
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 equipment_weapon 时出错: {e}，返回默认值 0")
+            return 0
+
+    @equipment_weapon.setter
+    def equipment_weapon(self, value: str):
+        try:
+            self.data['equipment_weapon'] = value
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 equipment_weapon 时出错: {e}，不更新该值")
 
     @property
     def last_fishing(self) -> str:
@@ -312,25 +406,6 @@ class Player:
             logging.error(f"设置 last_fishing 时出错: {e}，不更新该值")
 
     @property
-    def rod_durability(self) -> Dict:
-        rod_str = self.data.get('rod_durability', '{}')
-        try:
-            return json.loads(rod_str)
-        except json.JSONDecodeError as e:
-            logging.error(f"JSON解析 rod_durability 时出错: {e}，内容: {rod_str}")
-            return {}
-        except Exception as e:
-            logging.error(f"解析 rod_durability 时出错: {e}，返回默认值 {{}}")
-            return {}
-
-    @rod_durability.setter
-    def rod_durability(self, value: Dict):
-        try:
-            self.data['rod_durability'] = json.dumps(value)
-        except (TypeError, ValueError) as e:
-            logging.error(f"设置 rod_durability 时出错: {e}，不更新该值")
-
-    @property
     def equipped_fishing_rod(self) -> str:
         try:
             return self.data.get('equipped_fishing_rod', '')
@@ -344,23 +419,6 @@ class Player:
             self.data['equipped_fishing_rod'] = value
         except Exception as e:
             logging.error(f"设置 equipped_fishing_rod 时出错: {e}，不更新该值")
-
-    @property
-    def last_item_use(self) -> int:
-        """获取上次使用物品的时间"""
-        try:
-            return int(self.data.get('last_item_use', '0'))
-        except (ValueError, TypeError) as e:
-            logging.error(f"解析 last_item_use 时出错: {e}，返回默认值 0")
-            return 0
-
-    @last_item_use.setter
-    def last_item_use(self, value: int):
-        """设置上次使用物品的时间"""
-        try:
-            self.data['last_item_use'] = str(int(value))
-        except (ValueError, TypeError) as e:
-            logging.error(f"设置 last_item_use 时出错: {e}，不更新该值")
 
     @property
     def position(self) -> int:
@@ -379,40 +437,6 @@ class Player:
         except (ValueError, TypeError) as e:
             logging.error(f"设置 position 时出错: {e}，不更新该值")
 
-    def update_data(self, updates: Dict[str, Any]) -> None:
-        """更新玩家数据并保存到文件"""
-        if not self.player_file or not self.standard_fields:
-            raise ValueError("player_file and standard_fields must be set")
-
-        # 更新内存中的数据
-        self.data.update(updates)
-
-        # 验证数据
-        if not self.validate_data():
-            raise ValueError("Invalid player data after update")
-
-        try:
-            # 读取所有玩家数据
-            players_data = []
-            with open(self.player_file, 'r', encoding='utf-8', newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row['user_id'] != self.user_id:
-                        players_data.append(row)
-
-            # 添加更新后的玩家数据
-            players_data.append(self.data)
-
-            # 写回文件
-            with open(self.player_file, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=self.standard_fields, quoting=csv.QUOTE_ALL)
-                writer.writeheader()
-                writer.writerows(players_data)
-
-        except Exception as e:
-            logger.error(f"更新玩家数据出错: {e}")
-            raise
-
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式"""
         return self.data
@@ -423,36 +447,31 @@ class Player:
         data = {
             'user_id': user_id,
             'nickname': nickname,
-            'gold': '3000',
-            'level': '1',
-            'last_checkin': '',
-            'inventory': '[]',
-            'hp': PLAYER_BASE_HP,
-            'max_hp': PLAYER_BASE_MAX_HP,
-            'attack': PLAYER_BASE_ATTACK,
-            'defense': PLAYER_BASE_DEFENSE,
-            'exp': '0',
-            'last_fishing': '',
-            'rod_durability': '{}',
-            'equipped_weapon': '',
-            'equipped_armor': '',
-            'last_item_use': '0',
-            'spouse': '',
-            'marriage_proposal': '',
+            'gold': constants.PLAYER_BASE_GOLD,
+            'level': 1,
+            'sign_in_timestamp': 0,
+            'inventory': '{}',
+            'hp': constants.PLAYER_BASE_MAX_HP + constants.PLAYER_LEVEL_UP_APPEND_HP,
+            'max_hp': constants.PLAYER_BASE_MAX_HP + constants.PLAYER_LEVEL_UP_APPEND_HP,
+            'attack': constants.PLAYER_BASE_ATTACK + constants.PLAYER_LEVEL_UP_APPEND_ATTACK,
+            'defense': constants.PLAYER_BASE_DEFENSE + constants.PLAYER_LEVEL_UP_APPEND_DEFENSE,
+            'exp': 0,
+            'max_exp': 0,
+            'last_fishing': 0,
+            'last_attack': 0,
+            'adventure_last_attack': 0,
+            'equipment_weapon': '',
+            'equipment_armor': '',
+            'equipment_fishing_rod': '',
             'challenge_proposal': '',
-            'last_attack': '0',
-            'adventure_last_attack': '0',
             'position': '0'
         }
         return cls(data)
 
-    def get_inventory_display(self, items_info: dict) -> str:
+    def get_inventory_display(self) -> str:
         """获取格式化的背包显示"""
         if not self.inventory:
             return "背包是空的"
-
-        # 统计物品数量
-        item_counts = Counter(self.inventory)
 
         # 按类型分类物品
         weapons = []
@@ -462,37 +481,38 @@ class Player:
         fishing_rods = []
         others = []
 
-        for item_name, count in item_counts.items():
-            item_info = items_info.get(item_name, {})
-            stats = []
+        # 遍历并安全访问每个物品的 UUID
+        for item_name in self.inventory:
+            item = self.inventory.get(item_name, {})
+            item_type = item.get('type', '')
+            # item_explain = item.get('explain', '')
+            item_amount = item.get('amount', 0)
+            item_rarity = item.get('rarity', 0)
+            item_level = item.get('level', 0)
+            if item_type == 'fishing_rod':
+                item_description = item.get('description', {})
+            else:
+                item_description = None
+            if item_type == 'weapon' or item_type == 'armor':
+                rarity_str = f"{constants.RARITY_EMOJIS[item_rarity]}"
+            else:
+                rarity_str = ""
 
-            # 获取物品属性
-            if item_info.get('hp', '0') != '0':
-                stats.append(f"生命值增加{item_info['hp']}")
-            if item_info.get('attack', '0') != '0':
-                stats.append(f"攻击力增加{item_info['attack']}")
-            if item_info.get('defense', '0') != '0':
-                stats.append(f"防御力增加{item_info['defense']}")
+            # 装备等级描述
+            if item_level == 0:
+                item_level_str = ""
+            else:
+                item_level_str = f"[Lv.{item_level}]"
 
-            stats_str = f"({', '.join(stats)})" if stats else ""
-            equipped_str = ""
+            # 鱼竿耐久度描述
+            if item_description:
+                item_durability_str = f"[耐久度: {item_description['durability']}]"
+            else:
+                item_durability_str = ""
 
-            if item_name == self.equipped_weapon:
-                equipped_str = "⚔️已装备"
-            elif item_name == self.equipped_armor:
-                equipped_str = "🛡️已装备"
-            elif item_name == self.equipped_fishing_rod:
-                equipped_str = "🎣已装备"
-
-            durability_str = ""
-            if item_info.get('type') == 'fishing_rod':
-                durability = self.rod_durability.get(item_name, 100)
-                durability_str = f" [耐久度:{durability}%]"
-
-            item_str = f"{item_name} x{count} {equipped_str} {stats_str}{durability_str}"
+            item_str = f"{item_name}{item_level_str}{rarity_str}{item_durability_str} x{item_amount}"
 
             # 根据物品类型分类
-            item_type = item_info.get('type', '')
             if item_type == 'weapon':
                 weapons.append(item_str)
             elif item_type == 'armor':
@@ -511,32 +531,32 @@ class Player:
 
         if weapons:
             inventory_list.append("⚔️ 武器:")
-            inventory_list.extend(f"  {w}" for w in weapons)
+            inventory_list.extend(f" └─{w}" for w in weapons)
             inventory_list.append("")
 
         if armors:
             inventory_list.append("🛡️ 防具:")
-            inventory_list.extend(f"  {a}" for a in armors)
+            inventory_list.extend(f" └─{a}" for a in armors)
             inventory_list.append("")
 
         if fishing_rods:
             inventory_list.append("🎣 鱼竿:")
-            inventory_list.extend(f"  {r}" for r in fishing_rods)
+            inventory_list.extend(f" └─{r}" for r in fishing_rods)
             inventory_list.append("")
 
         if consumables:
             inventory_list.append("🎁 消耗品:")
-            inventory_list.extend(f"  {c}" for c in consumables)
+            inventory_list.extend(f" └─{c}" for c in consumables)
             inventory_list.append("")
 
         if fish:
             inventory_list.append("🐟 鱼类:")
-            inventory_list.extend(f"  {f}" for f in fish)
+            inventory_list.extend(f" └─{f}" for f in fish)
             inventory_list.append("")
 
         if others:
             inventory_list.append("📦 其他物品:")
-            inventory_list.extend(f"  {o}" for o in others)
+            inventory_list.extend(f" └─{o}" for o in others)
 
         return "\n".join(inventory_list).strip()
 
@@ -545,132 +565,73 @@ class Player:
         return item_name in self.inventory
 
     @classmethod
-    def get_player(cls, user_id: str, player_file: str) -> Optional['Player']:
+    def get_player(cls, player_info: dict) -> Optional['Player']:
         """从文件中获取玩家数据
 
         Args:
             user_id: 用户ID
-            player_file: 玩家数据文件路径
+            player_info: 从数据库读取到的玩家数据
 
         Returns:
             Optional[Player]: 玩家实例,如果未找到则返回 None
         """
         try:
-            with open(player_file, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row['user_id'] == str(user_id):
-                        logger.info(f"找到用户ID为 {user_id} 的玩家数据")
-                        return cls(row)
-            logger.warning(f"未找到用户ID为 {user_id} 的玩家数据")
-            return None
+            if player_info :
+                return cls(player_info)
+            else:
+                return None
         except FileNotFoundError:
-            logger.error(f"玩家数据文件 {player_file} 未找到")
+            logger.error(f"未获取到玩家信息")
             return None
         except Exception as e:
-            logger.error(f"获取玩家数据出错: {e}")
+            logger.error(f"获取玩家信息出错: {e}")
             return None
 
-    def save_player_data(self, player_file: str, standard_fields: list) -> None:
-        """保存玩家数据到CSV文件
-
-        Args:
-            player_file: 玩家数据文件路径
-            standard_fields: 标准字段列表
-        """
-        try:
-            # 读取所有玩家数据
-            players_data = []
-            with open(player_file, 'r', encoding='utf-8', newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row['user_id'] != self.user_id:
-                        players_data.append(row)
-
-            # 添加更新后的玩家数据
-            players_data.append(self.to_dict())
-
-            # 写回文件
-            with open(player_file, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=standard_fields, quoting=csv.QUOTE_ALL)
-                writer.writeheader()
-                writer.writerows(players_data)
-
-        except Exception as e:
-            logger.error(f"保存玩家数据出错: {e}")
-            raise
-
-    def validate_data(self) -> bool:
-        """验证玩家数据的完整性"""
-        required_fields = {
-            'user_id': str,
-            'nickname': str,
-            'gold': (str, int),
-            'level': (str, int),
-            'hp': (str, int),
-            'max_hp': (str, int),
-            'attack': (str, int),
-            'defense': (str, int),
-            'exp': (str, int),
-            'position': (str, int)
-        }
-
-        try:
-            for field, types in required_fields.items():
-                if field not in self.data:
-                    logger.error(f"Missing required field: {field}")
-                    return False
-
-                value = self.data[field]
-                if isinstance(types, tuple):
-                    if not isinstance(value, types):
-                        try:
-                            # 尝试转换为字符串
-                            self.data[field] = str(value)
-                        except:
-                            logger.error(f"Invalid type for field {field}: {type(value)}")
-                            return False
-                else:
-                    if not isinstance(value, types):
-                        logger.error(f"Invalid type for field {field}: {type(value)}")
-                        return False
-            return True
-        except Exception as e:
-            logger.error(f"Data validation error: {e}")
-            return False
-
-    def _backup_data(self):
-        """创建数据文件的备份"""
-        if not self.player_file:
-            return
-
-        backup_dir = os.path.join(os.path.dirname(self.player_file), 'backups')
-        os.makedirs(backup_dir, exist_ok=True)
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_file = os.path.join(backup_dir, f'players_{timestamp}.csv')
-
-        try:
-            shutil.copy2(self.player_file, backup_file)
-        except Exception as e:
-            logger.error(f"创建数据备份失败: {e}")
-
-    def get_exp_for_next_level(self, level, base_exp=PLAYER_BASE_EXP, growth_factor=PLAYER_BASE_RATE_OF_EXP):
+    def get_exp_for_next_level(self, level):
         """
         计算当前等级升级到下一等级所需的经验值
         :param level: 当前等级 (int)
-        :param base_exp: 一级所需基础经验值 (默认100)
         :param growth_factor: 经验增长因子 (默认1.5，非线性增长)
         :return: 当前等级升级到下一级所需的经验值 (int)
         """
         if level < 1:
             raise ValueError("等级必须大于等于 1")
+        base_exp = constants.PLAYER_BASE_EXP
 
-        # 二次增长公式计算升级经验
-        required_exp = int(base_exp * (level ** growth_factor))
+        if level <= 10:
+            # 前10级使用较低的增长因子，实现快速升级
+            required_exp = int(base_exp * (level ** 1.1))
+        elif level > 10 and level <= 20:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.2))
+        elif level > 20 and level <= 30:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.3))
+        elif level > 30 and level <= 40:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.4))
+        elif level > 40 and level <= 50:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.5))
+        elif level > 50 and level <= 60:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.6))
+        elif level > 60 and level <= 70:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.7))
+        elif level > 70 and level <= 80:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.8))
+        elif level > 80 and level <= 90:
+            # 增长因子递增
+            required_exp = int(base_exp * (level ** 1.9))
+        else:
+            # 90-100
+            required_exp = int(base_exp * (level ** 2))
+
         return required_exp
 
-    def get_player_status(self, items_info: dict) -> str:
+    def get_player_status(self, detail) -> str:
         """获取家状态
 
         Args:
@@ -685,7 +646,7 @@ class Player:
 
         # 记录玩家基础属性
         needs_update = False
-        updates = {}
+        update_info = {}
         player_level = self.level
         player_exp = self.exp
         player_hp = self.hp
@@ -694,52 +655,94 @@ class Player:
         player_defense = self.defense
 
         # 获取装备加成
-        equipped_weapon = self.equipped_weapon
-        equipped_armor = self.equipped_armor
-        equipped_fishing_rod = self.equipped_fishing_rod
-        hp_bonus = 0
+        equipped_weapon = self.game.rouge_equipment_system.get_equipment_by_id(self.equipment_weapon)
+        equipped_armor = self.game.rouge_equipment_system.get_equipment_by_id(self.equipment_armor)
+        equipped_fishing_rod = self.equipment_fishing_rod
+        max_hp_bonus = 0
         attack_bonus = 0
         defense_bonus = 0
-
         # 获取武器加成
-        if equipped_weapon and equipped_weapon in items_info:
-            weapon_info = items_info[equipped_weapon]
-
+        if equipped_weapon:
+            # 获取装备等级
+            item_level = equipped_weapon.get('level', 1)
+            # 获取稀有度
+            item_rarity = equipped_weapon.get('rarity', 1)
+            rarity_str = f"[lv.{item_level}]{constants.RARITY_EMOJIS[item_rarity]}"
+            # 获取装备三维加成
             weapon_stats = []
-            if weapon_info.get('attack', '0') != '0':
-                weapon_stats.append(f"⚔️:{weapon_info['attack']}%")
-            if weapon_info.get('defense', '0') != '0':
-                weapon_stats.append(f"🛡️:{weapon_info['defense']}%")
-            weapon_str = f"{equipped_weapon}({', '.join(weapon_stats)})" if weapon_stats else equipped_weapon
-            attack_bonus = int(weapon_info['attack'])
+            if equipped_weapon.get('attack_bonus', 0) != 0:
+                weapon_stats.append(f"⚔️{equipped_weapon['attack_bonus']}")
+                # 获取攻击加成
+                attack_bonus = int(equipped_weapon['attack_bonus'])
+            # 获取技能词条
+            skills = equipped_weapon.get('skills', [])
+            skill_str = []
+            if skills:
+                for skill in skills:
+                    skill_str.append(f"      - [{skill.get('name', '未知技能')}] {skill.get('description', '无描述')} {skill.get('trigger_probability', 0)}% 概率发动。")
+                attribute_info = "\n".join(skill_str)
+                skill_section = f"\n      技能：\n{attribute_info}"
+            else:
+                # 如果没有技能，置空技能部分
+                skill_section = ""
+
+            # 格式化装备说明
+            if detail:
+                # 详细说明
+                weapon_str = f"{equipped_weapon['name']}{rarity_str}\n      加成：{'/'.join(weapon_stats)}{skill_section}"
+            else:
+                # 简单说明
+                weapon_str = f"{equipped_weapon['name']}{rarity_str}"
         else:
             weapon_str = "无"
 
         # 获取护甲加成
-        if equipped_armor and equipped_armor in items_info:
-            armor_info = items_info[equipped_armor]
+        if equipped_armor:
+            # 获取装备等级
+            item_level = equipped_armor.get('level', 1)
+            # 获取稀有度
+            item_rarity = equipped_armor.get('rarity', 1)
+            rarity_str = f"[lv.{item_level}]{constants.RARITY_EMOJIS[item_rarity]}"
+            # 获取装备三维加成
             armor_stats = []
-            if armor_info.get('attack', '0') != '0':
-                armor_stats.append(f"⚔️:{armor_info['attack']}%")
-            if armor_info.get('defense', '0') != '0':
-                armor_stats.append(f"🛡️:{armor_info['defense']}%")
-            if armor_info.get('hp', '0') != '0':
-                armor_stats.append(f"❤️:{armor_info['hp']}%")
-            armor_str = f"{equipped_armor}({', '.join(armor_stats)})" if armor_stats else equipped_armor
-            defense_bonus = int(armor_info['defense'])
-            hp_bonus = int(armor_info['hp'])
+            if equipped_armor.get('defense_bonus', 0) != 0:
+                armor_stats.append(f"🛡️{equipped_armor['defense_bonus']}")
+                # 获取防御加成
+                defense_bonus = int(equipped_armor['defense_bonus'])
+            if equipped_armor.get('max_hp_bonus', 0) != 0:
+                armor_stats.append(f"❤️{equipped_armor['max_hp_bonus']}")
+                # 获取最大生命加成
+                max_hp_bonus = int(equipped_armor['max_hp_bonus'])
+            # 获取技能词条
+            skills = equipped_armor.get('skills', [])
+            skill_str = []
+            if skills:
+                for skill in skills:
+                    skill_str.append(f"      - [{skill.get('name', '未知技能')}] {skill.get('description', '无描述')} {skill.get('trigger_probability', 0)}% 概率发动。")
+                attribute_info = "\n".join(skill_str)
+                skill_section = f"\n      技能：\n{attribute_info}"
+            else:
+                # 如果没有技能，置空技能部分
+                skill_section = ""
+            # 格式化装备说明
+            if detail:
+                # 详细说明
+                armor_str = f"{equipped_armor['name']}{rarity_str}\n      加成：{'/'.join(armor_stats)}{skill_section}"
+            else:
+                # 简单说明
+                armor_str = f"{equipped_armor['name']}{rarity_str}"
         else:
             armor_str = "无"
 
         # 检查玩家等级
-        if player_level > PLAYER_MAX_LEVEL:
+        if player_level > constants.PLAYER_MAX_LEVEL:
             # 玩家等级异常，需要修正
-            player_level = PLAYER_MAX_LEVEL
-            player_exp = self.get_exp_for_next_level(PLAYER_MAX_LEVEL)
+            player_level = constants.PLAYER_MAX_LEVEL
+            player_exp = self.get_exp_for_next_level(constants.PLAYER_MAX_LEVEL)
             needs_update = True
 
         # 理论血量上限
-        theory_max_hp = int((player_level * 50 + PLAYER_BASE_MAX_HP) * (1 + hp_bonus/100))
+        theory_max_hp = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus)
         # 检查玩家血量上限是否符合预期
         if player_max_hp != theory_max_hp:
             # 血量上限异常，需要修正
@@ -750,7 +753,7 @@ class Player:
             needs_update = True
 
         # 理论攻击力
-        theory_attack = int((player_level * 10 + PLAYER_BASE_ATTACK) * (1 + attack_bonus/100))
+        theory_attack = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus)
         # 检查玩家攻击力是否符合预期
         if player_attack != theory_attack:
             # 攻击力异常，需要修正
@@ -758,7 +761,7 @@ class Player:
             needs_update = True
 
         # 理论防御力
-        theory_defense = int((player_level * 10 + PLAYER_BASE_DEFENSE) * (1 + defense_bonus/100))
+        theory_defense = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus)
         # 检查玩家防御力是否符合预期
         if player_defense != theory_defense:
             # 防御力异常，需要修正
@@ -766,54 +769,45 @@ class Player:
             needs_update = True
 
         if needs_update:
-            updates['level'] = str(player_level)
-            updates['exp'] = str(player_exp)
-            updates['hp'] = str(player_hp)
-            updates['max_hp'] = str(player_max_hp)
-            updates['attack'] = str(player_attack)
-            updates['defense'] = str(player_defense)
-
-        # 婚姻状态
-        spouses = self.spouse.split(',') if self.spouse else []
-        spouses = [s for s in spouses if s]  # 过滤空字符串
-
-        if spouses:
-            marriage_status = f"已婚 (配偶: {', '.join(spouses)})"
-        else:
-            marriage_status = "单身"
-
-        if self.marriage_proposal:
-            # 获取求婚者的昵称
-            proposer = self.get_player(self.marriage_proposal, self.player_file)
-            if proposer:
-                proposer_name = proposer.nickname
-            else:
-                proposer_name = f"@{self.marriage_proposal}"
-            marriage_status += f"\n💝 收到来自 {proposer_name} 的求婚"
+            update_info['level'] = str(player_level)
+            update_info['exp'] = str(player_exp)
+            update_info['hp'] = str(player_hp)
+            update_info['max_hp'] = str(player_max_hp)
+            update_info['attack'] = str(player_attack)
+            update_info['defense'] = str(player_defense)
 
         # 构建状态信息
         status = [
             f"🏷️ 玩家: {self.nickname}",
             f"💰 金币: {self.gold}",
-            f"📊 等级: {player_level}",
+            f"📈 等级: {player_level}",
             f"✨ 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
-            f"❤️ 生命值: {player_hp}/{player_max_hp}",  # 修改生命值显示
+            f"❤️ 生命: {player_hp}/{player_max_hp}",
             f"⚔️ 攻击力: {player_attack}",
             f"🛡️ 防御力: {player_defense}",
-            f"🗡️ 装备武器: {weapon_str}",
-            f"⛓️ 装备护甲: {armor_str}",
-            f"💕 婚姻状态: {marriage_status}"
         ]
 
         # 如果发现异常，更新数据
         if needs_update:
-            self.update_data(updates)
+            self.game._update_player_data(self.user_id, update_info)
             status.insert(1, "⚠️ 检测到玩家异常，已自动修正")
+
+        # 检查玩家是否装备武器
+        if equipped_weapon:
+            status.append(f"🗡️ 装备武器: {weapon_str}")
+
+        # 检查玩家是否装备防具
+        if equipped_armor:
+            status.append(f"🎽 装备护甲: {armor_str}")
 
         # 如果装备了鱼竿，显示鱼竿信息
         if equipped_fishing_rod:
-            rod_durability = self.rod_durability.get(equipped_fishing_rod, 100)
-            status.append(f"🎣 装备鱼竿: {equipped_fishing_rod} [耐久度:{rod_durability}%]")
+            # rod_durability = self.rod_durability.get(equipped_fishing_rod, 100)
+            # status.append(f"🎣 装备鱼竿: {equipped_fishing_rod} [耐久度:{rod_durability}%]")
+            fishing_rod = self.equipment_fishing_rod
+            fishing_rod_name = fishing_rod.get('name', '未知鱼竿')
+            fishing_rod_description = fishing_rod.get("description", {})
+            status.append(f"🎣 装备鱼竿: {fishing_rod_name} [耐久度: {fishing_rod_description['durability']}]")
 
         return "\n".join(status)
 
