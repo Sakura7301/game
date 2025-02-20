@@ -2354,7 +2354,9 @@ class Game(Plugin):
                     is_equipped_explain = self.rouge_equipment_system.get_equipment_info(is_equipped)
                     equipment_dict = {
                         'uuid': is_equipped['id'],
+                        'name': is_equipped['name'],
                         'type': is_equipped['type'],
+                        'level': is_equipped['level'],
                         'rarity': is_equipped['rarity'],
                         'price': is_equipped['price'],
                         'amount': 1,
