@@ -963,8 +963,13 @@ class Game(Plugin):
             result.append(f"🤞 触发事件: {event['name']}")
             result.append(f"“{event['description']}”")
             if 'effect' in event:
-                inventory = player.inventory
                 for key, value in event['effect'].items():
+                    # 获取背包
+                    if 'inventory' in updates_info:
+                        inventory = updates_info['inventory']
+                    else:
+                        inventory = player.inventory
+                    # 检查事件
                     if key == 'gold':
                         # 金币变化
                         new_gold = player.gold + value
@@ -978,7 +983,11 @@ class Game(Plugin):
                             result.append(f"💸 失去 {abs(value)} 金币")
                     elif key == 'hp':
                         # 血量变化
-                        new_hp = player.hp + value
+                        if updates_info['hp']:
+                            player_hp = updates_info['hp']
+                        else:
+                            player_hp = player.hp
+                        new_hp = player_hp + value
                         if new_hp < 0:
                             new_hp = 0
                         updates_info['hp'] = new_hp
@@ -993,9 +1002,9 @@ class Game(Plugin):
                             result.append(f"✨ 经验增加 {value}")
                         # 根据获得经验判断玩家是否升级
                         level_up_result = self.check_player_upgrade(player, value)
+                        # 无论是否升级，都更新该值
+                        updates_info['level'] = level_up_result['level']
                         if level_up_result['level'] > player.level:
-                            # 玩家升级了
-                            updates_info['level'] = level_up_result['level']
                             # 获取升级信息
                             level_up_str = self.get_player_level_up_data(player, level_up_result, updates_info)
                             result.append(level_up_str)
