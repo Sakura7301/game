@@ -956,7 +956,10 @@ class Game(Plugin):
                 for key, value in event['effect'].items():
                     if key == 'gold':
                         # 金币变化
-                        updates_info['gold'] = player.gold + value
+                        new_gold = player.gold + value
+                        if new_gold < 0:
+                            new_gold = 0
+                        updates_info['gold'] = new_gold
                         # 添加金币变化提示
                         if value > 0:
                             result.append(f"💰 获得 {value} 金币")
@@ -965,6 +968,8 @@ class Game(Plugin):
                     elif key == 'hp':
                         # 血量变化
                         new_hp = player.hp + value
+                        if new_hp < 0:
+                            new_hp = 0
                         updates_info['hp'] = new_hp
                         # 添加血量变化提示
                         if value > 0:
@@ -986,18 +991,30 @@ class Game(Plugin):
                         else:
                             # 没升级，更新经验即可
                             updates_info['exp'] = level_up_result['exp']
-                    elif key == 'random':
-                        # 随机失去一件物品
-                        lost_item_name = random.choice(list(inventory.keys()))
-                        lost_item = inventory[key]
-                        # 判断此物品剩余数量
-                        if lost_item['amount'] == 1:
-                            inventory.pop(lost_item_name)
+                    elif key == 'lost_item':
+                        # 使用当前时间作为随机数种子
+                        random.seed(time.time_ns())
+                        # 生成[0.0, 1.0)之间的随机数
+                        rand = random.random()
+                        if rand < 0.8:
+                            # 80%的概率失去一个
+                            lost_num = 1
                         else:
-                            lost_item['amount'] -= 1
-                        updates_info['inventory'] = inventory
-                        result.append(f"🗑️ 随机失去了一件物品: {lost_item_name}")
-                        logger.debug(f"玩家 {user_id} 丢失 {lost_item_name} x1")
+                            # 20%的概率失去两个
+                            lost_num = 2
+                        while lost_num > 0:
+                            # 随机失去一件物品
+                            lost_item_name = random.choice(list(inventory.keys()))
+                            lost_item = inventory[key]
+                            # 判断此物品剩余数量
+                            if lost_item['amount'] == 1:
+                                inventory.pop(lost_item_name)
+                            else:
+                                lost_item['amount'] -= 1
+                            updates_info['inventory'] = inventory
+                            result.append(f"🗑️ 丢失了: {lost_item_name} x1")
+                            logger.debug(f"玩家 {user_id} 丢失 {lost_item_name} x1")
+                            lost_num -= 1
                     elif key == 'weapon':
                         # 随机获得一件武器
                         weapon = self.rouge_equipment_system.get_random_equipment(player.level, 'weapon')
@@ -1024,8 +1041,7 @@ class Game(Plugin):
                             value -= 1
                         updates_info['inventory'] = inventory
                     else:
-                        # 失去随机物品
-                        # sakura_debug 暂未支持的key
+                        # 暂未支持的key
                         result.append(f"暂不支持的事件: {key}")
         elif block['type'] in ['空地', '直辖市', '省会', '地级市', '县城', '乡村']:
             property_info = self.monopoly.get_property_owner(new_position)

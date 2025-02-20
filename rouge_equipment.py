@@ -732,31 +732,31 @@ class RougeEquipment:
             base_info = (
                 f"{type_emoji}  [{equipment.get('name', '未知')}{rarity_emoji}]\n"
                 # f"🆔 ID：{equipment.get('id')}\n"
-                f"📈 等级：{equipment.get('level', 1)}\n"
-                f"💎 稀有度：{stars}\n"
-                f"💰 价值：{equipment.get('price', 0)} 金币\n"
+                f"  📈 等级：{equipment.get('level', 1)}\n"
+                f"  💎 稀有度：{stars}\n"
+                f"  💰 价值：{equipment.get('price', 0)} 金币\n"
             )
 
             # 属性信息
             lines = []
             attack_bonus = equipment.get('attack_bonus', 0)
             if attack_bonus != 0:
-                lines.append(f"⚔️  攻击加成：{attack_bonus}")
+                lines.append(f"  ⚔️  攻击加成：{attack_bonus}")
 
             defense_bonus = equipment.get('defense_bonus', 0)
             if defense_bonus != 0:
-                lines.append(f"🛡️  防御加成：{defense_bonus}")
+                lines.append(f"  🛡️  防御加成：{defense_bonus}")
 
             max_hp_bonus = equipment.get('max_hp_bonus', 0)
             if max_hp_bonus != 0:
-                lines.append(f"❤️  最大生命加成：{max_hp_bonus}")
+                lines.append(f"  ❤️  最大生命加成：{max_hp_bonus}")
 
             # 技能信息
             skills = equipment.get('skills', [])
             if skills:
-                lines.append(f"🔮 技能：")
+                lines.append(f"  🔮 技能：")
                 for skill in skills:
-                    lines.append(f"  - [{skill.get('name', '未知技能')}]：{skill.get('description', '无描述')} {skill.get('trigger_probability', 0)}% 概率发动。")
+                    lines.append(f"    - [{skill.get('name', '未知技能')}]：{skill.get('description', '无描述')} {skill.get('trigger_probability', 0)}% 概率发动。")
 
             attribute_info = "\n".join(lines)
 

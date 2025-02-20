@@ -593,7 +593,7 @@ RANDOM_EVENTS = {
             "description": "你遭遇了扒手，损失了一些贵重物品",
             "effect": {
                 "gold": -350,
-                "lost_item": "random"
+                "lost_item": 1
             }
         },
         {
