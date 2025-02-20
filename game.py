@@ -280,7 +280,7 @@ class Game(Plugin):
                         except json.JSONDecodeError:
                             logger.error(f"无法解析 inventory 字符串: {inventory_str}，将使用默认空字典。")
                             player_data['inventory'] = {}
-                logger.info(f"成功获取 user_id 为 {user_id} 的玩家数据。")
+                logger.debug(f"成功获取 user_id 为 {user_id} 的玩家数据。")
                 return player_data
             else:
                 logger.debug(f"未找到 user_id 为 {user_id} 的玩家。")
@@ -346,7 +346,7 @@ class Game(Plugin):
                         except json.JSONDecodeError:
                             logger.error(f"无法解析 inventory 字符串: {inventory_str}，将使用默认空字典。")
                             player_data['inventory'] = {}
-                logger.info(f"成功获取 nickname 为 {nickname} 的玩家数据。")
+                logger.debug(f"成功获取 nickname 为 {nickname} 的玩家数据。")
                 return player_data
             else:
                 logger.debug(f"未找到 nickname 为 {nickname} 的玩家。")
@@ -2233,7 +2233,7 @@ class Game(Plugin):
             conn = self._get_connection()
             with conn:
                 conn.execute(update_query, update_data)
-            logger.info(f"用户 {user_id} 的数据已成功部分更新！")
+            logger.debug(f"用户 {user_id} 的数据已成功部分更新！")
         except sqlite3.Error as e:
             logger.error(f"更新玩家数据时出错: {e} | 数据: {update_data}")
 
