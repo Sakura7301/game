@@ -25,7 +25,7 @@ from bridge.context import ContextType, Context
 @plugins.register(
     name="Game",
     desc="一个简单的文字游戏系统",
-    version="0.2.3",
+    version="0.2.4",
     author="assistant",
     desire_priority=0
 )
@@ -45,10 +45,12 @@ class Game(Plugin):
             os.makedirs(self.data_dir, exist_ok=True)
             # 初始化配置
             self.config = super().load_config()
-            # 加载管理员列表
-            self.admins = self.config.get("admins")
             # 加载文件路径
             self.player_db_path = os.path.join(self.data_dir, "players.db")
+            # 加载管理员密码
+            self.admin_password = self.config.get("admin_password")
+            # 初始化管理员列表
+            self.admin_list = []
             # 游戏系统状态
             self.game_status = True
             # 初始化钓鱼系统
@@ -363,7 +365,12 @@ class Game(Plugin):
         # 获取用户ID作为主要标识符
         current_id = msg.actual_user_id if msg.is_group else msg.from_user_id
 
-        app_id = msg.app_id
+        if self.channel_type == "gewechat":
+            # gewe协议获取群名
+            nickname = msg.actual_user_nickname
+        else:
+            # 使用 sender 作为昵称
+            nickname = msg.actual_user_nickname if msg.is_group else msg.from_user_nickname
 
         # 检查是否有用户ID
         if not current_id:
@@ -399,8 +406,11 @@ class Game(Plugin):
             "挑战": lambda id: self.attack_player(id, content, msg),
             "接受挑战": lambda id: self.accept_challenge(id),
             "拒绝挑战": lambda id: self.refuse_challenge(id),
-            "开机": lambda id: self.toggle_game_system(id, app_id, 'start'),
-            "关机": lambda id: self.toggle_game_system(id, app_id, 'stop'),
+            "鉴权": lambda id: self.authenticate("鉴权", id, content),
+            "认证": lambda id: self.authenticate("认证", id, content),
+            "auth": lambda id: self.authenticate("auth", id, content),
+            "开机": lambda id: self.toggle_game_system(id, 'start'),
+            "关机": lambda id: self.toggle_game_system(id, 'stop'),
             "充值": lambda id: self.toggle_recharge(id, content),
             "购买地块": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
@@ -413,12 +423,11 @@ class Game(Plugin):
             if cmd in cmd_handlers:
                 try:
                     if constants.SYSTEM_BIT:
-                        # 内测
-                        if not self._is_admin(current_id):
-                            reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
-                        else:
-                            # 公测
+                        if self.is_admin(current_id):
+                            # 系统维护期间仅管理员可使用
                             reply = cmd_handlers[cmd](current_id)
+                        else:
+                            reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
                     else:
                         # 公测
                         reply = cmd_handlers[cmd](current_id)
@@ -481,6 +490,7 @@ class Game(Plugin):
 
 管理员功能
 ————————————
+🔑 认证/鉴权/auth [密码] - 认证管理员身份
 🔧 开机 - 开启游戏系统
 🔧 关机 - 关闭游戏系统
 💴 充值 [@用户] 数额 - 为指定用户充值指定数额的金币
@@ -2360,11 +2370,22 @@ class Game(Plugin):
             logger.error(f"装备物品出错: {e}")
             return "装备物品时发生错误"
 
-    def toggle_game_system(self, user_id, app_id, action='toggle'):
+    def authenticate(self, cmd_str, user_id, content):
+        """验证玩家密码"""
+        password = self.regex_match(cmd_str, content)
+        # 检查密码是否正确
+        if password == self.admin_password:
+            # 认证成功，将用户添加到管理员列表中
+            self.admin_list.append(user_id)
+            return "[Game] 认证成功"
+        else:
+            return "[Game] 认证失败"
+
+    def toggle_game_system(self, user_id, action='toggle'):
         """切换游戏系统状态"""
         try:
-            if not self._is_admin(app_id):
-                return "🙅‍♂️ 只有管理员才能操作游戏系统开关"
+            if not self.is_admin(user_id):
+                return "🙅‍♂️ 你没有管理员权限！无法切换游戏系统状态！"
 
             if action == 'toggle':
                 self.game_status = not self.game_status
@@ -2406,8 +2427,8 @@ class Game(Plugin):
             player = self.get_player(user_id)
             if not player:
                 return "🤷‍♂️ 您还没有注册游戏"
-            elif not self._is_admin(player.nickname):
-                return "🙅‍♂️ 只有管理员才能进行充值操作！"
+            elif not self.is_admin(player.nickname):
+                return "🙅‍♂️ 你没有管理员权限！无法充值！"
 
             target_name, amount = self.extract_username_and_amount(content)
 
@@ -2432,16 +2453,9 @@ class Game(Plugin):
             logger.error(f"充值出错: {e}")
             return "⚠️ 充值失败，请联系管理员。"
 
-    def _is_admin(self, user_id):
+    def is_admin(self, user_id):
         """检查玩家是否是管理员"""
-        try:
-            ret = False
-            if user_id in self.admins:
-                return True
-            return ret
-        except Exception as e:
-            logger.error(f"读取管理员配置出错: {e}")
-            return False
+        return any(admin in user_id for admin in self.admin_list)
 
     def buy_property(self, user_id):
         """购买当前位置的地块"""
