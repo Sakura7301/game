@@ -1025,7 +1025,7 @@ class Game(Plugin):
                         while lost_num > 0:
                             # 随机失去一件物品
                             lost_item_name = random.choice(list(inventory.keys()))
-                            lost_item = inventory[key]
+                            lost_item = inventory[lost_item_name]
                             # 判断此物品剩余数量
                             if lost_item['amount'] == 1:
                                 inventory.pop(lost_item_name)
