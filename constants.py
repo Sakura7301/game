@@ -390,7 +390,7 @@ RANDOM_EVENTS = {
             "description": "你发现了一个古老的宝箱",
             "effect": {
                 "exp": 100,
-                "item": "armor"
+                "weapon": 1
             }
         },
         {
@@ -399,7 +399,8 @@ RANDOM_EVENTS = {
             "description": "你发现了一个精美的宝箱",
             "effect": {
                 "exp": 600,
-                "item": "weapon"
+                "weapon": 1,
+                "armor": 1
             }
         },
         {
@@ -513,7 +514,7 @@ RANDOM_EVENTS = {
             "name": "王室赐予",
             "description": "沼泽地的怪物入侵，你奋力搏杀，国王很赞赏你的英勇，赐予了你一把武器！",
             "effect": {
-                "item": "weapon"
+                "weapon": 1
             }
         },
         {
@@ -592,7 +593,7 @@ RANDOM_EVENTS = {
             "description": "你遭遇了扒手，损失了一些贵重物品",
             "effect": {
                 "gold": -350,
-                "item": "random"
+                "lost_item": "random"
             }
         },
         {

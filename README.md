@@ -50,13 +50,13 @@
    #installp git@github.com:Sakura7301/game.git
    ```
 2. **配置插件**：请务必在 ChatGPT on WeChat 的配置文件中设置 `hot_reload = true`，以确保插件能够正常运行。
-3. **配置管理员**: 程序运行之后你需要修改`plugins/game/data/config.json`文件中的`admins`字段来将管理员的微信昵称添加进去，例如：
+3. **配置管理员**: 程序运行之后你需要修改`plugins/game/data/config.json`文件中的`admins`字段来将管理员的ID(即`gewechat_app_id`)添加进去。，例如：
    ```json
    {
-     "admins": ["王小明"]
+     "admins": ["wx_xPjJvunxxxxAIBXxBI"]
    }
    ```
-4. **开始游戏**：参见游戏指令说明文档，开始游戏吧(必须执行 `开机` 指令之后才能够正常交互)。
+4. **开始游戏**：参见游戏指令说明文档，开始游戏(必须执行 `开机` 指令之后才能够正常交互)。
 
 ---
 

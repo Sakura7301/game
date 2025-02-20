@@ -363,13 +363,9 @@ class Game(Plugin):
         # 获取用户ID作为主要标识符
         current_id = msg.actual_user_id if msg.is_group else msg.from_user_id
 
-        if self.channel_type == "gewechat":
-            # gewe协议获取群名
-            nickname = msg.actual_user_nickname
-        else:
-            # 使用 sender 作为昵称
-            nickname = msg.actual_user_nickname if msg.is_group else msg.from_user_nickname
+        app_id = msg.app_id
 
+        # 检查是否有用户ID
         if not current_id:
             return "无法获取您的ID，请确保ID已设置"
 
@@ -403,8 +399,8 @@ class Game(Plugin):
             "挑战": lambda id: self.attack_player(id, content, msg),
             "接受挑战": lambda id: self.accept_challenge(id),
             "拒绝挑战": lambda id: self.refuse_challenge(id),
-            "开机": lambda id: self.toggle_game_system(id, 'start'),
-            "关机": lambda id: self.toggle_game_system(id, 'stop'),
+            "开机": lambda id: self.toggle_game_system(id, app_id, 'start'),
+            "关机": lambda id: self.toggle_game_system(id, app_id, 'stop'),
             "充值": lambda id: self.toggle_recharge(id, content),
             "购买地块": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
@@ -418,7 +414,7 @@ class Game(Plugin):
                 try:
                     if constants.SYSTEM_BIT:
                         # 内测
-                        if not self._is_admin(nickname):
+                        if not self._is_admin(current_id):
                             reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
                         else:
                             # 公测
@@ -2348,14 +2344,10 @@ class Game(Plugin):
             logger.error(f"装备物品出错: {e}")
             return "装备物品时发生错误"
 
-    def toggle_game_system(self, user_id, action='toggle'):
+    def toggle_game_system(self, user_id, app_id, action='toggle'):
         """切换游戏系统状态"""
         try:
-            player = self.get_player(user_id)
-            if not player:
-                # 检查是否是默认管理员
-                return "🤷‍♂️ 您还没有注册游戏"
-            elif not self._is_admin(player.nickname):
+            if not self._is_admin(app_id):
                 return "🙅‍♂️ 只有管理员才能操作游戏系统开关"
 
             if action == 'toggle':
@@ -2424,11 +2416,11 @@ class Game(Plugin):
             logger.error(f"充值出错: {e}")
             return "⚠️ 充值失败，请联系管理员。"
 
-    def _is_admin(self, nickname):
+    def _is_admin(self, user_id):
         """检查玩家是否是管理员"""
         try:
             ret = False
-            if nickname in self.admins:
+            if user_id in self.admins:
                 return True
             return ret
         except Exception as e:
