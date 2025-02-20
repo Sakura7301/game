@@ -390,7 +390,8 @@ RANDOM_EVENTS = {
             "description": "你发现了一个古老的宝箱",
             "effect": {
                 "exp": 100,
-                "weapon": 1
+                "consumable": 2,
+                "weapon": 1,
             }
         },
         {
@@ -400,7 +401,8 @@ RANDOM_EVENTS = {
             "effect": {
                 "exp": 600,
                 "weapon": 1,
-                "armor": 1
+                "armor": 1,
+                "consumable": 4
             }
         },
         {
@@ -410,7 +412,8 @@ RANDOM_EVENTS = {
             "effect": {
                 "gold": 500,
                 "exp": 100,
-                "consumable": 3
+                "weapon": 1,
+                "consumable": 2
             }
         },
         {
@@ -433,7 +436,7 @@ RANDOM_EVENTS = {
         {
             "id": "found_silver_mine",
             "name": "发现银矿",
-            "description": "你发现了一座银矿，获得了大量银矿资源",
+            "description": "你发现了一座金矿，获得了大量金矿资源，化身黄金矿工了家人们！",
             "effect": {
                 "gold": 1600,
                 "exp": 400
@@ -442,7 +445,7 @@ RANDOM_EVENTS = {
         {
             "id": "birthday_gift",
             "name": "生日礼物",
-            "description": "朋友送给你一份精美的生日礼物",
+            "description": "朋友送给你一份精美的生日礼物，有朋友真好！",
             "effect": {
                 "gold": 666,
                 "consumable": 5
@@ -470,7 +473,7 @@ RANDOM_EVENTS = {
             "name": "生意成功",
             "description": "你的生意取得了成功，利润不菲",
             "effect": {
-                "gold": 800,
+                "gold": 2800,
                 "exp": 200
             }
         },
@@ -520,9 +523,9 @@ RANDOM_EVENTS = {
         {
             "id": "stock_market_gain",
             "name": "股市获利",
-            "description": "你的股票投资获得了显著回报",
+            "description": "你的股票投资获得了显著回报，大赚一笔！",
             "effect": {
-                "gold": 1700,
+                "gold": 4000,
                 "exp": 130
             }
         },
@@ -531,7 +534,7 @@ RANDOM_EVENTS = {
             "name": "幸运饼干",
             "description": "你在餐馆里吃到了一张幸运饼干，获得奖金",
             "effect": {
-                "gold": 100,
+                "gold": 500,
                 "exp": 20
             }
         }
@@ -540,7 +543,7 @@ RANDOM_EVENTS = {
         {
             "id": "tax",
             "name": "缴税",
-            "description": "需要缴纳一些税款",
+            "description": "需要缴纳一些税款，记得申报专项扣除",
             "effect": {
                 "gold": -1200
             }
@@ -550,13 +553,13 @@ RANDOM_EVENTS = {
             "name": "被偷窃",
             "description": "你的钱包被偷了,真是可恶！",
             "effect": {
-                "gold": -300
+                "gold": -3000
             }
         },
         {
             "id": "beaten",
-            "name": "被打",
-            "description": "你被他人袭击，损失了一些财物",
+            "name": "正义的被刺",
+            "description": "有个阴暗的家伙偷偷给了你的腰子一刀，等你反应过来的时候他已经不见了，甚至偷走了你的钱包！",
             "effect": {
                 "gold": -1000,
                 "hp": -20
@@ -565,7 +568,7 @@ RANDOM_EVENTS = {
         {
             "id": "fall_ill",
             "name": "生病",
-            "description": "你突然生病，需要支付医疗费用",
+            "description": "你突然生病，需要支付医疗费用，我作证，这不是新冠肺炎",
             "effect": {
                 "gold": -250,
                 "hp": -30
@@ -574,7 +577,7 @@ RANDOM_EVENTS = {
         {
             "id": "job_lost",
             "name": "失业",
-            "description": "因为经济不景气，你失去了工作",
+            "description": "因为经济不景气，你失去了工作，大环境不好啊~",
             "effect": {
                 "gold": -250
             }
@@ -582,7 +585,7 @@ RANDOM_EVENTS = {
         {
             "id": "natural_disaster",
             "name": "自然灾害",
-            "description": "你遭遇了一场自然灾害，财产受损",
+            "description": "你遭遇了一场自然灾害，财产受损，天灾总数难以避免的...",
             "effect": {
                 "gold": -500
             }
@@ -590,7 +593,7 @@ RANDOM_EVENTS = {
         {
             "id": "theft",
             "name": "盗窃",
-            "description": "你遭遇了扒手，损失了一些贵重物品",
+            "description": "你遭遇了扒手，损失了一些贵重物品，小偷果然最可恶了啊啊啊啊！",
             "effect": {
                 "gold": -350,
                 "lost_item": 1
@@ -599,7 +602,7 @@ RANDOM_EVENTS = {
         {
             "id": "legal_fine",
             "name": "法律罚款",
-            "description": "你带着武器出席贵族舞会，违反了王国规定，你需要支付罚款",
+            "description": "你带着武器出席贵族舞会，违反了王国规定，你需要支付罚款。等待，误入白虎堂？",
             "effect": {
                 "gold": -800
             }
@@ -607,7 +610,7 @@ RANDOM_EVENTS = {
         {
             "id": "scam",
             "name": "诈骗",
-            "description": "你被诈骗，损失了部分资金",
+            "description": "你被诈骗，损失了部分资金。兄弟，建议你赶紧下载国家反诈中心app",
             "effect": {
                 "gold": -1000
             }

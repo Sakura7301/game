@@ -659,14 +659,15 @@ class Game(Plugin):
         new_attack = player.attack + (constants.PLAYER_LEVEL_UP_APPEND_ATTACK * level_difference)
         new_defense = player.defense + (constants.PLAYER_LEVEL_UP_APPEND_DEFENSE * level_difference)
         # 更新玩家数据
+        updates['level'] = new_level
         updates['exp'] = new_exp
         updates['max_exp'] = new_max_exp
-        updates['level'] = new_level
-        updates['hp'] = new_max_hp
-        updates['max_hp'] = new_max_hp
-        updates['attack'] = new_attack
-        updates['defense'] = new_defense
         if new_level > player.level:
+            # 升级了，需要更新数据
+            updates['hp'] = new_max_hp
+            updates['max_hp'] = new_max_hp
+            updates['attack'] = new_attack
+            updates['defense'] = new_defense
             # 格式化升级提示
             level_up_str.append(f"🆙 升级啦！")
             level_up_str.append(f"[{player.nickname}] Lv.{new_level}")
@@ -1516,8 +1517,9 @@ class Game(Plugin):
             level_up_str = self.get_player_level_up_data(player, level_up_result, updates_info)
             # 物品掉落标志
             drop_flag = False
-            # 更新玩家数据
-            updates_info['hp'] = player_hp
+            if level_up_result['level'] == player_level:
+                # 未升级，更新玩家血量
+                updates_info['hp'] = player_hp
             # 判断是否掉落物品
             random.seed(time.time_ns())
             drop_num = random.randint(1, 100)
@@ -1549,6 +1551,8 @@ class Game(Plugin):
 
             # 更新玩家数据
             self._update_player_data(user_id, updates_info)
+
+            player = self.get_player(user_id)
 
             # 战斗结算
             battle_log.append(f"\n🎉 战斗胜利")
