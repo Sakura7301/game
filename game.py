@@ -1585,8 +1585,8 @@ class Game(Plugin):
                 'hp': '0',
             })
             battle_log.append(f"\n💀 战斗失败！")
-            battle_log.append(f"\n[{monster_name}]: {monster_hp}/{monster_max_hp}")
-            battle_log.append(f"\n[{player_name}]: 0/{player_max_hp}")
+            battle_log.append(f"[{monster_name}]: {monster_hp}/{monster_max_hp}")
+            battle_log.append(f"[{player_name}]: 0/{player_max_hp}")
 
         return "\n".join(battle_log)
 
