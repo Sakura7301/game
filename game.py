@@ -2423,11 +2423,7 @@ class Game(Plugin):
     def toggle_recharge(self, user_id, content):
         """充值系统"""
         try:
-            # 获取玩家对象
-            player = self.get_player(user_id)
-            if not player:
-                return "🤷‍♂️ 您还没有注册游戏"
-            elif not self.is_admin(player.nickname):
+            if not self.is_admin(user_id):
                 return "🙅‍♂️ 你没有管理员权限！无法充值！"
 
             target_name, amount = self.extract_username_and_amount(content)
