@@ -671,7 +671,7 @@ class Game(Plugin):
             level_up_str.append(f"🆙 升级啦！")
             level_up_str.append(f"[{player.nickname}] Lv.{new_level}")
             level_up_str.append(f"Exp: {new_exp}/{new_max_exp}")
-            level_up_str.append(f"Hp : {player.hp}/{new_max_hp}")
+            level_up_str.append(f"Hp : {new_max_hp}/{new_max_hp}")
             level_up_str.append("💪 属性提升：")
             level_up_str.append(f"❤️ 基础生命上限 +{constants.PLAYER_LEVEL_UP_APPEND_HP * level_difference}")
             level_up_str.append(f"⚔️ 基础攻击力 +{constants.PLAYER_LEVEL_UP_APPEND_ATTACK * level_difference}")
@@ -1565,14 +1565,14 @@ class Game(Plugin):
             if level_up:
                 battle_log.append(f"\n{level_up_str}")
             else:
-                battle_log.append(f"\n[{player_name}] Lv.{player.level}\nExp: {new_exp}/{player.get_exp_for_next_level(new_level)}\nHp : {player_hp}/{player_max_hp}")
+                battle_log.append(f"\n[{player_name}] Lv.{player.level}\nExp: {player.exp}/{player.max_exp}\nHp : {player.hp}/{player.max_hp}")
         else:
             # 更新玩家血量
             self._update_player_data(user_id, {
                 'hp': '0',
             })
             battle_log.append(f"\n💀 战斗失败！")
-            battle_log.append(f"\n[{monster_name}] Lv.{monster_level}\nExp: {player.exp}/{player.max_exp}\nHp  : {monster_hp}/{monster_max_hp}")
+            battle_log.append(f"\n[{monster_name}] Lv.{monster_level}\nHp  : {monster_hp}/{monster_max_hp}")
 
         return "\n".join(battle_log)
 
