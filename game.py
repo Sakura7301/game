@@ -947,8 +947,7 @@ class Game(Plugin):
 
         # 获取当前位置
         current_position = player.position if hasattr(player, 'position') else 0
-        # new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
-        new_position = 1
+        new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
 
         # 获取地块信息
         block = self.monopoly.get_block_info(new_position)
@@ -1099,9 +1098,11 @@ class Game(Plugin):
                     owner_player = self.get_player(owner)
                     if owner_player:
                         rent = self.monopoly.calculate_rent(new_position)
+                        appraisement = self.monopoly.calculate_price(new_position)
                         result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                         result.append(f"🗺 区域类型: {block['region']}")
-                        result.append(f"💵 租金 {rent} 金币")
+                        result.append(f"💵 租金: {rent} 金币")
+                        result.append(f"⚖️ 估值: {appraisement} 金币")
                         if player.gold >= rent:
                             # 扣除玩家金币
                             new_player_gold = player.gold - rent
@@ -2581,7 +2582,7 @@ class Game(Plugin):
             if prop_info:
                 result.append(f"\n{prop_info['name']} ({prop_info['region']})")
                 result.append(f"📈 等级: {prop_info['level']}")
-                result.append(f"💵 价值: {prop_info['price']} 金币")
+                result.append(f"⚖️ 估值: {prop_info['price']} 金币")
                 result.append(f"💲 当前租金: {prop_info['rent']} 金币")
 
         return "\n".join(result)
