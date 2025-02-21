@@ -121,7 +121,8 @@ class Game(Plugin):
             equipment_armor TEXT,
             equipment_fishing_rod TEXT,
             challenge_proposal TEXT,
-            position TEXT
+            is_pay_rent INTEGER,
+            position INTEGER
         )
         """
         create_index_query = "CREATE UNIQUE INDEX IF NOT EXISTS idx_nickname ON players(nickname);"
@@ -187,6 +188,7 @@ class Game(Plugin):
             'equipment_armor',
             'equipment_fishing_rod',
             'challenge_proposal',
+            'is_pay_rent',
             'position'
         ]
         complete_player_data = {}
@@ -415,6 +417,8 @@ class Game(Plugin):
             "购买地块": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
             "我的地产": lambda id: self.show_properties(id),
+            "收购": lambda id: self.acquisition_of_property(id),
+            "支付租金": lambda id: self.pay_the_rent(id),
             "地图": lambda id: self.show_map(id, content),
         }
 
@@ -422,12 +426,18 @@ class Game(Plugin):
         with self.lock:  # 获取锁
             if cmd in cmd_handlers:
                 try:
-                    if constants.SYSTEM_BIT:
-                        if self.is_admin(current_id):
-                            # 系统维护期间仅管理员可使用
+                    if constants.SYSTEM_MAINTENANCE:
+                        # 仅在维护时支持的指令(认证)
+                        if cmd in ["auth", "认证", "鉴权"]:
                             reply = cmd_handlers[cmd](current_id)
+                            e_context['reply'] = Reply(ReplyType.TEXT, reply)
+                            e_context.action = EventAction.BREAK_PASS
                         else:
-                            reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
+                            if self.is_admin(current_id):
+                                # 系统维护期间仅管理员可使用
+                                reply = cmd_handlers[cmd](current_id)
+                            else:
+                                reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
                     else:
                         # 公测
                         reply = cmd_handlers[cmd](current_id)
@@ -481,6 +491,8 @@ class Game(Plugin):
 🏠 我的地产 - 查看玩家地产
 🏘️ 购买地块 - 购买地块
 🔧 升级地块 - 升级地块
+💵 支付租金 - 支付租金
+💼 收购 - 收购其他玩家的地产
 🗺️ 地图 [页码] - 查看大富翁游戏地图
 
 其他功能
@@ -913,6 +925,10 @@ class Game(Plugin):
         if not player:
             return "🤷‍♂️ 您还没有注册游戏"
 
+        # 检查是否未支付租金
+        if player.is_pay_rent > 0:
+            return f"😵 您还未支付租金，无法外出！\n🧾 欠款：{player.is_pay_rent }\n\n💡 发送 [支付租金] 来支付你拖欠的租金，之后可以正常行动。"
+
         # 检查玩家状态
         if int(player.hp) <= 0:
             return "😵 您的生命值不足，请先使用药品恢复"
@@ -930,7 +946,7 @@ class Game(Plugin):
         steps = self.monopoly.roll_dice()
 
         # 获取当前位置
-        current_position = int(player.position) if hasattr(player, 'position') else 0
+        current_position = player.position if hasattr(player, 'position') else 0
         new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
 
         # 获取地块信息
@@ -1072,7 +1088,7 @@ class Game(Plugin):
                 result.append(f"⬜ 这块地还没有主人")
                 result.append(f"🗺 区域类型: {block['region']}")
                 result.append(f"💴 需要 {price} 金币")
-                result.append("\n发送'购买地块'即可购买")
+                result.append("\n💡 发送 [购买地块] 即可购买")
                 logger.debug(f"玩家 {user_id} 访问了未拥有的地块，位置: {new_position}, 价格: {price}")
             else:
                 # 需要付租金
@@ -1094,13 +1110,11 @@ class Game(Plugin):
                             result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                             result.append(f"🗺 区域类型: {block['region']}")
                             result.append(f"💸 支付租金 {rent} 金币")
-                            result.append(f"💰 当前金币: {new_player_gold}")
-                            logger.debug(f"玩家 {user_id} 支付了 {rent} 金币租金给 {owner_player.nickname}，剩余金币: {new_player_gold}")
                         else:
-                            result.append(f"\n你的金币不足以支付 {rent} 金币的租金！")
+                            result.append(f"\n😭 兜里的钱不足以支付 {rent} 金币的租金！")
                             logger.debug(f"玩家 {user_id} 的金币不足以支付租金，当前金币: {player.gold}, 需要租金: {rent}")
-                            updates_info['gold'] = 0
-                            # sakura_debug 不足以支付租金，不允许玩家前进
+                            # 设置需要支付租金的标志，未支付时不允许外出行动
+                            updates_info['is_pay_rent'] = rent
                     else:
                         result.append("⚠️ 地产所有者信息异常，请联系管理员")
                         logger.error(f"法获取地产所有者 {owner} 的信息，位置: {new_position}")
@@ -1111,7 +1125,7 @@ class Game(Plugin):
                         rent = self.monopoly.calculate_rent(new_position)
                         result.append(f"🏘️ 等级: {property_info['level']}")
                         result.append(f"💴 租金: {rent}")
-                        result.append("\n可以发送'升级地块'进行升级")
+                        result.append("\n💡 发送 [升级地块] 进行升级")
                     logger.debug(f"玩家 {user_id} 访问了自己的地盘，位置: {new_position}")
 
         # 更新玩家信息
@@ -2136,7 +2150,7 @@ class Game(Plugin):
             'challenge_proposal': user_id
         })
 
-        return f"💪 您向 {target_name} 发起了挑战请求，等待对方回应。被挑战的玩家可以发送 '接受挑战' 或 '拒绝挑战' 来决定是否开始PVP游戏。"
+        return f"💪 您向 {target_name} 发起了挑战请求，等待对方回应。被挑战的玩家可以发送 [接受挑战] 或 [拒绝挑战] 来决定是否开始PVP游戏。"
 
     def refuse_challenge(self, user_id):
         """拒绝挑战"""
@@ -2261,7 +2275,7 @@ class Game(Plugin):
             # 解析命令
             parts = content.split()
             if len(parts) < 2:
-                return "装备格式错误！请使用: 装备 物品名"
+                return "❌ 装备格式错误！请使用: 装备 [物品名]"
 
             item_name = parts[1]
             item_level = 1
@@ -2494,13 +2508,13 @@ class Game(Plugin):
         price = self.monopoly.calculate_property_price(current_position)
 
         # 检查玩家金币是否足够
-        if int(player.gold) < price:
-            return f"🤷‍♂️ 购买这块地需要 {price} 金币，您的金币不足"
+        if player.gold < price:
+            return f"🤷‍♂️ 购买这块地需要 {price} 金币，您的金币不足\n💳 您的余额：{player.gold}"
 
         # 扣除金币并购买地块
-        new_gold = int(player.gold) - price
+        new_gold = player.gold - price
         if self.monopoly.buy_property(current_position, user_id, price):
-            self._update_player_data(user_id, {'gold': str(new_gold)})
+            self._update_player_data(user_id, {'gold': new_gold})
             return f"""🎉 成功购买地块！\n📍 位置: {block['name']}\n🏛️ 类型: {block['type']}\n💴 花费: {price} 金币"""
         else:
             return "😵 购买失败，请稍后再试"
@@ -2525,17 +2539,8 @@ class Game(Plugin):
             return "💪 地产已达到最高等级"
 
         block = self.monopoly.get_block_info(current_position)
-        # 根据地区类型设置升级倍率
-        region_multipliers = {
-            "特别行政区": 5.0,
-            "直辖市": 3.0,
-            "省会": 2.0,
-            "地级市": 1.5,
-            "县城": 1.0,
-            "其他": 1.0
-        }
-
-        multiplier = region_multipliers[block["region"]]
+        # 计算升级倍率
+        multiplier = constants.UPGRADE_MULTIPLIER_OF_THE_AREA[block["region"]]
         base_price = property_data.get('price', 1000)
         # 计算升级费用
         upgrade_cost = int(base_price * 0.5 * multiplier * current_level)
@@ -2577,6 +2582,108 @@ class Game(Plugin):
                 result.append(f"📈 等级: {prop_info['level']}")
                 result.append(f"💵 价值: {prop_info['price']} 金币")
                 result.append(f"💲 当前租金: {prop_info['rent']} 金币")
+
+        return "\n".join(result)
+
+    def acquisition_of_property(self, user_id):
+        """收购地产"""
+        player = self.get_player(user_id)
+        if not player:
+            return "🤷‍♂️ 您还没有注册游戏"
+
+        result = []
+        updates_info = {}
+        # 获取玩家当前位置
+        current_position = int(getattr(player, 'position', 0))
+        block = self.monopoly.get_block_info(current_position)
+        if current_position == 0:
+            return f"🤷‍♂️ 地点[{block['name']}]无法收购！"
+
+        property_info = self.monopoly.get_property_info(current_position)
+
+        if property_info is None:
+            return f"🤷‍♂️ 地点[{block['name']}]没有属主，无法完成收购！\n你可以直接进行购买\n\n💡 发送 [购买地块] 来购买"
+
+        # 检查是否是玩家的地产
+        if property_info['owner'] == player.user_id:
+            return "🤷‍♂️ 您无法收购自己的地产"
+        # 计算收购价格
+        acquisition_price = property_info['price']
+        owner = property_info['owner']
+        owner_player = self.get_player(owner)
+        if owner_player:
+            # 检查是否有足够的金币
+            if player.gold < acquisition_price:
+                return "🤷‍♂️ 您的金币不足，无法收购该地产"
+            else:
+                # 扣除玩家金币
+                new_player_gold = player.gold - acquisition_price
+                updates_info['gold'] = new_player_gold
+
+                # 增加地主金币
+                owner_new_gold = owner_player.gold + acquisition_price
+                self._update_player_data(owner, {'gold': owner_new_gold})
+
+                # 地块所有权更新
+                self.monopoly.update_property_owner(current_position, player.user_id)
+
+                result.append(f"{block['name']}")
+                result.append(f"📜 “{block['description']}”")
+                result.append(f"🗺 区域类型: {block['region']}")
+                result.append(f"💳 支付 {acquisition_price} 金币")
+                result.append(f"💼 收购成功！")
+        else:
+            result.append("😵 无法获取地主信息，请稍后再试")
+
+        self._update_player_data(user_id, updates_info)
+        return "\n".join(result)
+
+    def pay_the_rent(self, user_id):
+        """支付租金"""
+        player = self.get_player(user_id)
+        if not player:
+            return "🤷‍♂️ 您还没有注册游戏"
+
+        result = []
+        updates_info = {}
+        # 获取玩家当前位置
+        current_position = int(getattr(player, 'position', 0))
+
+        if player.position == 0 or player.is_pay_rent == 0:
+            return "🤷‍♂️ 你无需支付租金！"
+
+        # 获取当前地块信息
+        property_info = self.monopoly.get_property_owner(current_position)
+        block = self.monopoly.get_block_info(current_position)
+        # 获取地主信息
+        owner = property_info['owner']
+        owner_player = self.get_player(owner)
+        if owner_player:
+            rent = self.monopoly.calculate_rent(current_position)
+            if player.gold >= rent:
+                # 扣除玩家金币
+                new_player_gold = player.gold - rent
+                updates_info['gold'] = new_player_gold
+
+                # 增加地主金币
+                owner_new_gold = owner_player.gold + rent
+                self._update_player_data(owner, {'gold': owner_new_gold})
+
+                result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
+                result.append(f"🗺 区域类型: {block['region']}")
+                result.append(f"💸 支付租金 {rent} 金币")
+                result.append(f"🤝 您已成功支付租金，可以继续行动了！")
+                # 重置标记
+                updates_info['is_pay_rent'] = 0
+            else:
+                result.append(f"\n😭 兜里的钱不足以支付 {rent} 金币的租金！")
+                logger.debug(f"玩家 {user_id} 的金币不足以支付租金，当前金币: {player.gold}, 需要租金: {rent}")
+                # 设置需要支付租金的标志，未支付时不允许外出行动
+                updates_info['is_pay_rent'] = rent
+        else:
+            result.append("😵 无法获取地主信息，请稍后再试")
+
+        self._update_player_data(user_id, updates_info)
 
         return "\n".join(result)
 

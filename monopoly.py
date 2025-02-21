@@ -52,7 +52,7 @@ class MonopolySystem:
 
     def get_property_owner(self, position: int) -> Optional[str]:
         """获取地块所有者"""
-        return self.properties_data.get(str(position))
+        return self.properties_data.get(position)
 
     def buy_property(self, position: int, player_id: str, price: int) -> bool:
         """购买地块"""
@@ -72,21 +72,11 @@ class MonopolySystem:
         block = self.get_block_info(position)
         base_price = 1000
 
-        # 根据地区类型设置基础价格
-        region_multipliers = {
-            "特别行政区": 10.0,
-            "直辖市": 5.0,
-            "省会": 3.0,
-            "地级市": 2.0,
-            "县城": 1.0,
-            "其他": 1.0
-        }
-
         # 根据距离起点的远近调整价格
         distance_factor = 1 + (position % 10) * 0.2
 
         # 计算最终价格
-        final_price = int(base_price * region_multipliers[block["region"]] * distance_factor)
+        final_price = int(base_price * constants.BASE_PRICE_OF_THE_AREA[block["region"]] * distance_factor)
         return final_price
 
     def calculate_rent(self, position: int) -> int:
@@ -98,18 +88,8 @@ class MonopolySystem:
         block = self.get_block_info(position)
         base_rent = property_data["price"] * 0.2
 
-        # 根据地区类型设置租金倍率
-        region_multipliers = {
-            "特别行政区": 5.0,
-            "直辖市": 3.0,
-            "省会": 2.0,
-            "地级市": 1.5,
-            "县城": 1.0,
-            "其他": 1.0
-        }
-
         # 计算最终租金
-        final_rent = int(base_rent * region_multipliers[block["region"]] * property_data["level"] * 2)
+        final_rent = int(base_rent * constants.RENT_MULTIPLIER_OF_THE_AREA[block["region"]] * property_data["level"] * 2)
         return final_rent
 
     def calculate_price(self, rent, level, multiplier=1):
@@ -180,3 +160,21 @@ class MonopolySystem:
             int(pos) for pos, data in self.properties_data.items()
             if data["owner"] == player_id
         ]
+
+    def update_property_owner(self, position: int, new_owner: str) -> bool:
+        """直接修改地产的所有者，不影响其它逻辑
+
+        Args:
+            position (int): 地块位置
+            new_owner (str): 新的所有者ID
+
+        Returns:
+            bool: 如果修改成功返回True，否则返回False（例如地产不存在）
+        """
+        pos_key = str(position)
+        if pos_key not in self.properties_data:
+            return False
+
+        self.properties_data[pos_key]["owner"] = new_owner
+        self._save_json(self.properties_file, self.properties_data)
+        return True

@@ -281,6 +281,21 @@ class Player:
             logging.error(f"设置 challenge_proposal 时出错: {e}，不更新该值")
 
     @property
+    def is_pay_rent(self) -> int:
+        try:
+            return int(self.data.get('is_pay_rent', 0))
+        except (ValueError, TypeError) as e:
+            logging.error(f"解析 is_pay_rent 时出错: {e}，返回默认值 0")
+            return 0
+
+    @is_pay_rent.setter
+    def is_pay_rent(self, value: int):
+        try:
+            self.data['is_pay_rent'] = str(int(value))
+        except (ValueError, TypeError) as e:
+            logging.error(f"设置 is_pay_rent 时出错: {e}，不更新该值")
+
+    @property
     def last_attack(self) -> int:
         try:
             return int(self.data.get('last_attack', 0))
@@ -424,7 +439,7 @@ class Player:
     def position(self) -> int:
         """获取玩家位置"""
         try:
-            return int(self.data.get('position', '0'))
+            return int(self.data.get('position', 0))
         except (ValueError, TypeError) as e:
             logging.error(f"解析 position 时出错: {e}，返回默认值 0")
             return 0
@@ -433,7 +448,7 @@ class Player:
     def position(self, value: int):
         """设置玩家位置"""
         try:
-            self.data['position'] = str(int(value))
+            self.data['position'] = int(value)
         except (ValueError, TypeError) as e:
             logging.error(f"设置 position 时出错: {e}，不更新该值")
 
@@ -464,7 +479,8 @@ class Player:
             'equipment_armor': '',
             'equipment_fishing_rod': '',
             'challenge_proposal': '',
-            'position': '0'
+            'is_pay_rent': 0,
+            'position': 0
         }
         return cls(data)
 
@@ -779,7 +795,7 @@ class Player:
         # 构建状态信息
         status = [
             f"🏷️ 玩家: {self.nickname}",
-            f"💰 金币: {self.gold}",
+            f"💳 余额: {self.gold}",
             f"📈 等级: {player_level}",
             f"✨ 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
             f"❤️ 生命: {player_hp}/{player_max_hp}",

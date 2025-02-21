@@ -405,7 +405,7 @@ class Shop:
 
         # 检查金币是否足够
         if player.gold < total_price:
-            return f"金币不足！需要 {total_price} 金币"
+            return f"😭 您的余额不足！\n💰 费用 {total_price} 金币\n💳 您的余额：{player.gold}"
 
         # 更新玩家金币和背包
         player.gold -= total_price
@@ -429,13 +429,13 @@ class Shop:
         equip_hint = ""
         if item_type in ['weapon', 'armor']:
             equip_type = "武器" if item_type == 'weapon' else "护甲"
-            equip_hint = f"\n💡 可以使用「装备 {item_name}」来装备此{equip_type}。"
+            equip_hint = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}。"
         elif item_type == 'fishing_rod':
-            equip_hint = f"\n💡 可以使用「装备 {item_name}」来装备此物品。"
+            equip_hint = f"\n💡 发送 [装备 {item_name}] 来装备此物品。"
         elif item_type == 'consumable':
-            equip_hint = f"\n💡 可以按照指令「使用 {item_name}」来使用此物品。"
+            equip_hint = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
 
-        return f"成功购买 {amount} 个 {item_name}, 剩余金币: {player.gold}\n{equip_hint}"
+        return f"🛒 成功购买 {amount} 个 {item_name}\n💴 花费: {total_price} 金币\n💰 剩余金币: {player.gold}\n{equip_hint}"
 
     def show_shop(self, content=""):
         """显示商店物品列表"""
@@ -471,6 +471,6 @@ class Shop:
             shop_list += f"└─ 📝{item['explain']}\n\n"
 
         shop_list += "━━━━━━━━━━━━━━━\n"
-        shop_list += "💡 输入 商店 [页码] 查看其他页"
+        shop_list += "💡 发送 商店 [页码] 查看其他页"
 
         return shop_list
