@@ -484,10 +484,17 @@ class Player:
         }
         return cls(data)
 
-    def get_inventory_display(self) -> str:
-        """获取格式化的背包显示"""
+    def get_inventory_display(self, content: str) -> str:
+        """获取格式化的背包显示，支持分页"""
         if not self.inventory:
             return "背包是空的"
+
+        # 从 content 中提取页码
+        try:
+            page_str = content.split("背包")[1].strip() if "背包" in content else "1"
+            page_num = int(page_str) if page_str.isdigit() else 1
+        except (IndexError, ValueError):
+            page_num = 1
 
         # 按类型分类物品
         weapons = []
@@ -497,38 +504,28 @@ class Player:
         fishing_rods = []
         others = []
 
-        # 遍历并安全访问每个物品的 UUID
+        # 遍历背包物品
         for item_name in self.inventory:
             item = self.inventory.get(item_name, {})
             item_type = item.get('type', '')
-            # item_explain = item.get('explain', '')
             item_amount = item.get('amount', 0)
             item_rarity = item.get('rarity', 0)
             item_level = item.get('level', 0)
-            if item_type == 'fishing_rod':
-                item_description = item.get('description', {})
-            else:
-                item_description = None
-            if item_type == 'weapon' or item_type == 'armor':
-                rarity_str = f"{constants.RARITY_EMOJIS[item_rarity]}"
-            else:
-                rarity_str = ""
+            item_description = item.get('description', {}) if item_type == 'fishing_rod' else None
 
-            # 装备等级描述
-            if item_level == 0:
-                item_level_str = ""
-            else:
-                item_level_str = f"[Lv.{item_level}]"
+            # 稀有度描述
+            rarity_str = f"{constants.RARITY_EMOJIS[item_rarity]}" if item_type in ['weapon', 'armor'] else ""
+
+            # 等级描述
+            item_level_str = f"[Lv.{item_level}]" if item_level > 0 else ""
 
             # 鱼竿耐久度描述
-            if item_description:
-                item_durability_str = f"[耐久度: {item_description['durability']}]"
-            else:
-                item_durability_str = ""
+            item_durability_str = f"[耐久度: {item_description['durability']}]" if item_description else ""
 
+            # 物品格式化字符串
             item_str = f"{item_name}{item_level_str}{rarity_str}{item_durability_str} x{item_amount}"
 
-            # 根据物品类型分类
+            # 分类
             if item_type == 'weapon':
                 weapons.append(item_str)
             elif item_type == 'armor':
@@ -542,39 +539,68 @@ class Player:
             else:
                 others.append(item_str)
 
-        # 生成背包显示
-        inventory_list = ["🎒 背包物品\n"]
+        # 合并所有分类为一个完整的列表
+        all_items = []
 
         if weapons:
-            inventory_list.append("⚔️ 武器:")
-            inventory_list.extend(f" └─{w}" for w in weapons)
-            inventory_list.append("")
+            all_items.append("⚔️ 武器:")
+            all_items.extend(f" └─{w}" for w in weapons)
+            all_items.append("")
 
         if armors:
-            inventory_list.append("🛡️ 防具:")
-            inventory_list.extend(f" └─{a}" for a in armors)
-            inventory_list.append("")
+            all_items.append("🛡️ 防具:")
+            all_items.extend(f" └─{a}" for a in armors)
+            all_items.append("")
 
         if fishing_rods:
-            inventory_list.append("🎣 鱼竿:")
-            inventory_list.extend(f" └─{r}" for r in fishing_rods)
-            inventory_list.append("")
+            all_items.append("🎣 鱼竿:")
+            all_items.extend(f" └─{r}" for r in fishing_rods)
+            all_items.append("")
 
         if consumables:
-            inventory_list.append("🎁 消耗品:")
-            inventory_list.extend(f" └─{c}" for c in consumables)
-            inventory_list.append("")
+            all_items.append("🎁 消耗品:")
+            all_items.extend(f" └─{c}" for c in consumables)
+            all_items.append("")
 
         if fish:
-            inventory_list.append("🐟 鱼类:")
-            inventory_list.extend(f" └─{f}" for f in fish)
-            inventory_list.append("")
+            all_items.append("🐟 鱼类:")
+            all_items.extend(f" └─{f}" for f in fish)
+            all_items.append("")
 
         if others:
-            inventory_list.append("📦 其他物品:")
-            inventory_list.extend(f" └─{o}" for o in others)
+            all_items.append("📦 其他物品:")
+            all_items.extend(f" └─{o}" for o in others)
 
-        return "\n".join(inventory_list).strip()
+        # 分页逻辑：每页 15 条数据
+        items_per_page = 15
+        total_items = len(all_items)
+        total_pages = (total_items + items_per_page - 1) // items_per_page
+
+        # 页码边界处理
+        if page_num < 1 or page_num > total_pages:
+            return f"⚠️ 页码无效，请输入正确的页码 (1 - {total_pages})"
+
+        # 获取当前页的数据范围
+        start_index = (page_num - 1) * items_per_page
+        end_index = min(start_index + items_per_page, total_items)
+
+        # 构造当前页显示内容
+        result = [f"🎒 背包物品 - 第 {page_num}/{total_pages} 页"]
+        result.extend(all_items[start_index:end_index])
+
+        if page_num > 1:
+            # 分页导航提示
+            result.append("\n————————————")
+            if page_num < total_pages:
+                result.append(f"➡️ 发送 [背包 {page_num + 1}] 查看下一页")
+            if page_num > 1:
+                result.append(f"⬅️ 发送 [背包 {page_num - 1}] 查看上一页")
+
+        # 删除末尾空行
+        if result[-1] == "":
+            result.pop()
+
+        return "\n".join(result)
 
     def has_item(self, item_name: str) -> bool:
         """检查是否拥有指定物品"""

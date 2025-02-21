@@ -392,7 +392,7 @@ class Game(Plugin):
             "签到": lambda id: self.daily_checkin(id),
             "商店": lambda id: self.shop_system.show_shop(content),
             "购买": lambda id: self.shop_system.buy_item(id, content),
-            "背包": lambda id: self.show_inventory(id),
+            "背包": lambda id: self.show_inventory(id, content),
             "装备": lambda id: self.equip_from_inventory(id, content),
             "游戏菜单": lambda id: self.game_help(),
             "赠送": lambda id: self.give_item(id, content, msg),
@@ -416,7 +416,7 @@ class Game(Plugin):
             "充值": lambda id: self.toggle_recharge(id, content),
             "购买地块": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
-            "我的地产": lambda id: self.show_properties(id),
+            "我的地产": lambda id: self.show_properties(id, content),
             "收购": lambda id: self.acquisition_of_property(id),
             "支付租金": lambda id: self.pay_the_rent(id),
             "地图": lambda id: self.show_map(id, content),
@@ -1098,7 +1098,7 @@ class Game(Plugin):
                     owner_player = self.get_player(owner)
                     if owner_player:
                         rent = self.monopoly.calculate_rent(new_position)
-                        appraisement = self.monopoly.calculate_price(new_position)
+                        appraisement = self.monopoly.calculate_price(rent, property_info['level'])
                         result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                         result.append(f"🗺 区域类型: {block['region']}")
                         result.append(f"💵 租金: {rent} 金币")
@@ -1614,7 +1614,7 @@ class Game(Plugin):
             # 解析命令，格式为 "使用 物品名" 或 "使用 物品名 数量"
             parts = content.split()
             if len(parts) < 2:
-                return "❌ 使用格式错误！请使用: 使用 物品名 [数量]"
+                return "❌ 使用格式错误！\n💡 请使用: 使用 物品名 [数量]"
 
             item_name = parts[1]
             amount = 1  # 默认使用1个
@@ -1623,7 +1623,7 @@ class Game(Plugin):
                 if amount <= 0:
                     return "❌ 使用数量至少为一个"
         except (IndexError, ValueError):
-            return "❌ 使用格式错误！请使用: 使用 物品名 [数量]"
+            return "❌ 使用格式错误！\n💡 请使用: 使用 物品名 [数量]"
 
         # 检查玩家是否存在
         player = self.get_player(user_id)
@@ -1766,38 +1766,33 @@ class Game(Plugin):
             return f"⚠️ 签到失败: {str(e)}"
 
     def give_item(self, user_id, content, msg: ChatMessage):
-        # 解析命令参数
+        # 拆分命令参数
         parts = content.split()
-        if len(parts) < 4:
-            return "❌ 格式错误！请使用: 赠送 @用户 物品名 数量"
+        if len(parts) < 3:
+            return "❌ 格式错误！\n💡请使用: 赠送 用户名 物品名 [数量]"
 
-        target_id = None
-        # 解析@后面的用户名
-        for part in parts:
-            if part.startswith('@'):
-                target_name = part[1:]  # 去掉@符号
-                # 遍历players.csv查找匹配的用户
-                target_player = self._get_player_by_nickname(target_name)
-                target_id = target_player.user_id
-                break  # 找到第一个@用户后就退出
-        if not target_id:
+        # 获取目标用户名（注意：此处不需要@符号）
+        target_name = parts[1]
+        target_player = self._get_player_by_nickname(target_name)
+        if not target_player:
             return "🔍 无法找到目标用户，请确保该用户已注册游戏"
+        target_id = target_player.user_id
 
-        # 从消息内容中提取物品名和数量
-        # 跳过第一个词"赠送"和@用户名
-        remaining_parts = [p for p in parts[1:] if not p.startswith('@')]
-        if len(remaining_parts) < 2:
-            return "❌ 请指定物品名称和数量"
+        # 从命令中提取物品名称
+        item_name = parts[2]
 
-        item_name = remaining_parts[0]
-        try:
-            amount = int(remaining_parts[1])
-            if amount <= 0:
-                return "❌ 赠送数量必须大于0"
-        except (IndexError, ValueError):
-            return "❌ 请正确指定赠送数量"
+        # 提取数量，如果不存在则默认1
+        if len(parts) >= 4:
+            try:
+                amount = int(parts[3])
+                if amount <= 0:
+                    return "❌ 赠送数量必须大于0"
+            except ValueError:
+                return "❌ 请正确指定赠送数量"
+        else:
+            amount = 1
 
-        # 检查双方是否都已注册
+        # 检查发送者和接收者是否已注册
         sender = self.get_player(user_id)
         if not sender:
             return "❌ 您还没注册,请先注册"
@@ -1806,29 +1801,30 @@ class Game(Plugin):
         if not receiver:
             return "🙅‍♂️ 对方还没有注册游戏"
 
-        # 检查发送者是否拥有足够的物品
+        # 检查发送者是否拥有该物品且数量足够
         sender_inventory = sender.inventory
         receiver_inventory = receiver.inventory
+        if item_name not in sender_inventory:
+            return f"🤷‍♂️ 您没有物品 {item_name}"
         if sender_inventory[item_name]["amount"] < amount:
             return f"🤷‍♂️ 您没有足够的 {item_name}\n当前拥有: {sender_inventory[item_name]['amount']}"
+
+        # 进行赠送操作
+        give_you_item = sender_inventory[item_name]
+        if sender_inventory[item_name]["amount"] == amount:
+            # 如果数量相等，直接删除该物品
+            sender_inventory.pop(item_name)
         else:
-            give_you_item = sender_inventory[item_name]
-            if sender_inventory[item_name]["amount"] == amount:
-                # 如果发送者的物品数量等于赠送数量，直接删除该物品
-                sender_inventory.pop(item_name)
-            else:
-                # 赠送物品的一方需要减少物品数量
-                sender_inventory[item_name]["amount"] -= amount
+            sender_inventory[item_name]["amount"] -= amount
 
-            # 检查对方是否拥有此物品
-            if item_name in receiver.inventory:
-                # 如果对方已经拥有该物品，增加数量
-                receiver_inventory[item_name]["amount"] += amount
-            else:
-                # 将物品添加到对方的背包
-                receiver_inventory[item_name] = give_you_item
+        # 检查接收者是否已经拥有该物品，存在则增加数量，否则直接添加
+        if item_name in receiver_inventory:
+            receiver_inventory[item_name]["amount"] += amount
+        else:
+            # 将物品复制到接收方背包（保留其他属性信息）
+            receiver_inventory[item_name] = give_you_item
 
-        # 更新双方的背包
+        # 更新双方的背包数据
         self._update_player_data(user_id, {
             'inventory': sender_inventory
         })
@@ -2117,12 +2113,12 @@ class Game(Plugin):
         if not msg.is_group:
             return "❌ 只能在群聊中使用攻击功能"
 
-        # 解析命令参数
-        parts = content.split()
-        if len(parts) < 2 or not parts[1].startswith('@'):
-            return "❌ 请使用正确的格式：攻击 @用户名"
+        # 解析命令内容
+        parts = content.split()  # 分割命令为部分
+        if len(parts) < 2:  # 确保至少包含命令和用户名
+            return "❌ 请使用正确的格式：攻击 用户名"
 
-        target_name = parts[1][1:]  # 去掉@符号
+        target_name = parts[1]  # 提取用户名
         # 根据昵称获取玩家
         target = self._get_player_by_nickname(target_name)
         if not target:
@@ -2147,12 +2143,12 @@ class Game(Plugin):
             player = self.get_player(target.challenge_proposal)
             return f"😂 对方已经有一个待处理的挑战请求，来自玩家 [{player.nickname}]"
 
-        # 更新目标玩家的挑战请求，使用挑战者的user_id
+        # 更新目标玩家的挑战请求，使用挑战者的 user_id
         self._update_player_data(target.user_id, {
             'challenge_proposal': user_id
         })
 
-        return f"💪 您向 {target_name} 发起了挑战请求，等待对方回应。被挑战的玩家可以发送 [接受挑战] 或 [拒绝挑战] 来决定是否开始PVP游戏。"
+        return f"💪 您向 {target_name} 发起了挑战请求，等待对方回应。\n💡 被挑战的玩家可以发送 [接受挑战] 或 [拒绝挑战] 来决定是否开始PVP游戏。"
 
     def refuse_challenge(self, user_id):
         """拒绝挑战"""
@@ -2256,12 +2252,12 @@ class Game(Plugin):
         except sqlite3.Error as e:
             logger.error(f"更新玩家数据时出错: {e} | 数据: {update_data}")
 
-    def show_inventory(self, user_id):
+    def show_inventory(self, user_id, content):
         player = self.get_player(user_id)
         if not player:
             return "🥴 您还没注册..."
 
-        return player.get_inventory_display()
+        return player.get_inventory_display(content)
 
     def equip_from_inventory(self, user_id: str, content: str) -> str:
         """从背包装备物品
@@ -2438,18 +2434,19 @@ class Game(Plugin):
         从字符串中提取用户名和金额。
 
         参数:
-            text (str): 输入的字符串，例如 '充值 @用户名 1000'
+            text (str): 输入的字符串，例如 '充值 玩家名 100000'
 
         返回:
             tuple: (用户名, 金额) 如果匹配失败，则返回 (None, None)
         """
         # 定义正则表达式模式
-        pattern = r'充值\s+@(\w+)\s+(\d+)'
+        # 匹配数字和用户名，数字在前并用空格分隔
+        pattern = r'充值\s+(\S+)\s+(\d+)'
         match = re.search(pattern, text)
 
         if match:
-            username = match.group(1)
-            amount = int(match.group(2))
+            username = match.group(1)  # 提取用户名
+            amount = int(match.group(2))  # 提取金额
             return username, amount
         else:
             return None, None
@@ -2476,7 +2473,7 @@ class Game(Plugin):
 
                     # 保存更新后的玩家数据
                     self._update_player_data(target.user_id, updates_info)
-                    return f"已为 {target.nickname} 用户充值 {amount} 金币。"
+                    return f"🏦 充值成功！\n\n👤目标用户: {target.nickname}\n💰 金额: {amount} 金币。"
             else:
                 return "⚠️ 请使用正确的格式：充值 @用户名 金额"
         except Exception as e:
@@ -2566,24 +2563,52 @@ class Game(Plugin):
 
         return "\n".join(result)
 
-    def show_properties(self, user_id):
-        """显示玩家的地产"""
+    def show_properties(self, user_id, content=""):
+        """分页显示玩家的地产"""
         player = self.get_player(user_id)
         if not player:
             return "🤷‍♂️ 您还没有注册游戏"
 
+        # 获取玩家所有地产
         properties = self.monopoly.get_player_properties(user_id)
         if not properties:
             return "🤷‍♂️ 您还没有购买任何地产"
 
-        result = ["您的地产列表："]
-        for pos in properties:
+        page_num = 1
+        parts = content.split()
+        if len(parts) > 1:
+            if int(parts[1]) > 1:
+                page_num = int(parts[1])
+
+        # 设置分页参数
+        page_size = 5
+        total_properties = len(properties)
+        total_pages = (total_properties + page_size - 1) // page_size  # 计算总页数
+
+        # 检查页码范围是否有效
+        if page_num < 1 or page_num > total_pages:
+            return f"⚠️ 页码无效，请输入正确的页码 (1 - {total_pages})"
+
+        # 计算当前页的开始和结束位置
+        start_index = (page_num - 1) * page_size
+        end_index = min(page_num * page_size, total_properties)
+
+        # 生成地产信息
+        result = [f"🏡 您的地产列表 - 第 {page_num}/{total_pages} 页"]
+        for pos in properties[start_index:end_index]:
             prop_info = self.monopoly.get_property_info(pos)
             if prop_info:
                 result.append(f"\n{prop_info['name']} ({prop_info['region']})")
                 result.append(f"📈 等级: {prop_info['level']}")
                 result.append(f"⚖️ 估值: {prop_info['price']} 金币")
                 result.append(f"💲 当前租金: {prop_info['rent']} 金币")
+
+        # 加入分页提示
+        result.append("\n————————————")
+        if page_num < total_pages:
+            result.append(f"➡️ 输入 [我的地产 {page_num + 1}] 查看更多地产")
+        if page_num > 1:
+            result.append(f"⬅️ 输入 [我的地产 {page_num - 1}] 查看前一页")
 
         return "\n".join(result)
 
@@ -2706,29 +2731,25 @@ class Game(Plugin):
         page_size = 10
 
         # 如果没有传入页码，则定位到玩家所在的那一页
-        num = current_position // page_size + 1
+        page_num = current_position // page_size + 1
         parts = content.split()
         if len(parts) > 1:
-            try:
-                num = int(parts[1])
-                if num < 1:
-                    num = 1
-            except:
-                num = current_position // page_size + 1
+            if int(parts[1]) < 1:
+                page_num = 1
 
         # 计算总页数
         total_pages = (total_blocks + page_size - 1) // page_size
         # 边界判断：确保页码在有效范围内
-        if num < 1:
-            num = 1
-        if num > total_pages:
-            num = total_pages
+        if page_num < 1:
+            page_num = 1
+        if page_num > total_pages:
+            page_num = total_pages
 
         # 计算当前页数据起始与结束位置
-        start_index = (num - 1) * page_size
-        end_index = min(num * page_size, total_blocks)
+        start_index = (page_num - 1) * page_size
+        end_index = min(page_num * page_size, total_blocks)
 
-        result = [f"🗺️ 大富翁地图 - 页码 {num}/{total_pages}"]
+        result = [f"🗺️ 大富翁地图 - 页码 {page_num}/{total_pages}"]
         result.append("————————————")
 
         # 生成当前页地图显示
@@ -2761,7 +2782,13 @@ class Game(Plugin):
                 block_info += " ← 当前位置"
             result.append(block_info)
 
-        result.append("————————————")
+        # 加入分页提示
+        result.append("\n————————————")
+        if page_num < total_pages:
+            result.append(f"➡️ 输入 [地图 {page_num + 1}] 查看下一页地图")
+        if page_num > 1:
+            result.append(f"⬅️ 输入 [地图 {page_num - 1}] 查看前一页地图")
+
         return "\n".join(result)
 
     def gamble(self, user_id, bet_str):
@@ -2886,6 +2913,6 @@ class Game(Plugin):
         })
 
         payout = abs(payout)
-        result_str = f"━━━━━━━━━━━━━━━\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n{'💵 恭喜您赢得了' if win else '😞 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n━━━━━━━━━━━━━━━"
+        result_str = f"━━━━━━━━━━━━━━━\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n\n{'🤩 恭喜您赢得了' if win else '😢 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n━━━━━━━━━━━━━━━"
 
         return result_str

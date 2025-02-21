@@ -92,7 +92,7 @@ class MonopolySystem:
         final_rent = int(base_rent * constants.RENT_MULTIPLIER_OF_THE_AREA[block["region"]] * property_data["level"] * 2)
         return final_rent
 
-    def calculate_price(self, rent, level, multiplier=1):
+    def calculate_price(self, rent, level, multiplier=2):
         """
         根据租金（rent）和等级（level）计算价值（price）的函数。
 
