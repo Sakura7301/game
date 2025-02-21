@@ -2524,9 +2524,21 @@ class Game(Plugin):
         if current_level >= 3:
             return "💪 地产已达到最高等级"
 
-        # 计算升级费用
+        block = self.monopoly.get_block_info(current_position)
+        # 根据地区类型设置升级倍率
+        region_multipliers = {
+            "特别行政区": 5.0,
+            "直辖市": 3.0,
+            "省会": 2.0,
+            "地级市": 1.5,
+            "县城": 1.0,
+            "其他": 1.0
+        }
+
+        multiplier = region_multipliers[block["region"]]
         base_price = property_data.get('price', 1000)
-        upgrade_cost = int(base_price * 0.5 * current_level)
+        # 计算升级费用
+        upgrade_cost = int(base_price * 0.5 * multiplier * current_level)
 
         result = []
 
