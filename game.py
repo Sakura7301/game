@@ -2490,18 +2490,8 @@ class Game(Plugin):
         if self.monopoly.get_property_owner(current_position):
             return "🤷‍♂️ 这块地已经被购买了"
 
-        # 计算地块价格
-        base_prices = {
-            '直辖市': 2000,
-            '省会': 1500,
-            '地级市': 1000,
-            '县城': 500,
-            '乡村': 300,
-            '空地': 200
-        }
-        base_price = base_prices.get(block['type'], 500)
-        distance_factor = 1 + (current_position // 10) * 0.2  # 每10格增加20%价格
-        price = int(base_price * distance_factor)
+        # 计算购买地块所需近金钱
+        price = self.monopoly.calculate_property_price(current_position)
 
         # 检查玩家金币是否足够
         if int(player.gold) < price:
@@ -2535,8 +2525,10 @@ class Game(Plugin):
             return "💪 地产已达到最高等级"
 
         # 计算升级费用
-        base_price = property_data.get('price', 500)
+        base_price = property_data.get('price', 1000)
         upgrade_cost = int(base_price * 0.5 * current_level)
+
+        result = []
 
         # 检查玩家金币是否足够
         if int(player.gold) < upgrade_cost:
@@ -2546,12 +2538,14 @@ class Game(Plugin):
         new_gold = int(player.gold) - upgrade_cost
         if self.monopoly.upgrade_property(current_position):
             self._update_player_data(user_id, {'gold': str(new_gold)})
-            return f"""🏗️ 地产升级成功！
-📍 位置: {current_position}
-📈 当前等级: {current_level + 1}
-💴 花费: {upgrade_cost} 金币"""
+            result.append(f"🏗️ 地产升级成功")
+            result.append(f"📍 位置: {current_position}")
+            result.append(f"📈 当前等级: {current_level + 1}")
+            result.append(f"💴 花费: {upgrade_cost} 金币")
         else:
-            return "😵 升级失败，请稍后再试"
+            result.append("😵 升级失败，请稍后再试")
+
+        return "\n".join(result)
 
     def show_properties(self, user_id):
         """显示玩家的地产"""
