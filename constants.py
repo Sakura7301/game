@@ -186,6 +186,7 @@ WEAPON_NAME = [
 # 签到诗句提示
 SIGN_IN_POEMS = {
     "大吉": [
+        "苍天已死，黄天当立。岁在甲子，天下大吉。",
         "春风得意马蹄疾，一日看尽长安花。",
         "仰天大笑出门去，我辈岂是蓬蒿人！",
         "天生我材必有用，千金散尽还复来。",
@@ -322,62 +323,293 @@ SIGN_IN_POEMS = {
 }
 
 MONOPOLY_MAP = {
-    "total_blocks": 50,
+    "total_blocks": 200,
     "blocks": {
-        "0": {"type": "起点", "name": "首都北京", "description": "每次经过可获得200金币", "region": "直辖市"},
-        "12": {"type": "直辖市", "name": "上海", "description": "繁华的国际大都市", "region": "直辖市"},
-        "25": {"type": "直辖市", "name": "重庆", "description": "山城魅力", "region": "直辖市"},
-        "37": {"type": "直辖市", "name": "天津", "description": "北方港口城市", "region": "直辖市"},
+        "0": {"type": "起点", "name": "北京", "description": "每次经过可获得200金币", "region": "直辖市"},
+        "1": {"type": "直辖市", "name": "天津", "description": "天津煎饼果子，来了就得吃", "region": "直辖市"},
+        "2": {"type": "省会", "name": "石家庄", "description": "河北的省会，离北京很近", "region": "省会"},
+        "3": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+        "4": {"type": "地级市", "name": "保定", "description": "历史文化名城，直隶总督府所在地", "region": "地级市"},
+        "5": {"type": "县城", "name": "雄安新区", "description": "未来之城，正在崛起", "region": "县城"},
+        "6": {"type": "县城", "name": "唐山", "description": "工业城市，曾经的地震遗址", "region": "县城"},
+        "7": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
+        "8": {"type": "省会", "name": "太原", "description": "山西的省会，煤老板的故乡", "region": "省会"},
+        "9": {"type": "地级市", "name": "大同", "description": "云冈石窟，佛教艺术的瑰宝", "region": "地级市"},
+        "10": {"type": "县城", "name": "平遥古城", "description": "保存完好的明清古城", "region": "县城"},
+        "11": {"type": "县城", "name": "五台山", "description": "佛教圣地，香火旺盛", "region": "县城"},
+        "12": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
+        "13": {"type": "省会", "name": "呼和浩特", "description": "内蒙古的省会，草原上的城市", "region": "省会"},
+        "14": {"type": "地级市", "name": "包头", "description": "钢铁之城，工业重镇", "region": "地级市"},
+        "15": {"type": "县城", "name": "鄂尔多斯", "description": "富得流油的城市，煤炭资源丰富", "region": "县城"},
+        "16": {"type": "县城", "name": "呼伦贝尔", "description": "大草原，适合避暑", "region": "县城"},
+        "17": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+        "18": {"type": "省会", "name": "沈阳", "description": "东北的工业中心，清朝发源地", "region": "省会"},
+        "19": {"type": "地级市", "name": "大连", "description": "海滨城市，浪漫之都", "region": "地级市"},
+        "20": {"type": "县城", "name": "鞍山", "description": "钢铁之城，温泉胜地", "region": "县城"},
+        "21": {"type": "县城", "name": "抚顺", "description": "煤都，雷锋的第二故乡", "region": "县城"},
+        "22": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
+        "23": {"type": "省会", "name": "长春", "description": "汽车工业之城，电影之城", "region": "省会"},
+        "24": {"type": "地级市", "name": "吉林市", "description": "雾凇之都，冰雪之城", "region": "地级市"},
+        "25": {"type": "县城", "name": "延边", "description": "朝鲜族自治州，美食天堂", "region": "县城"},
+        "26": {"type": "县城", "name": "白城", "description": "草原湿地，生态旅游胜地", "region": "县城"},
+        "27": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+        "28": {"type": "省会", "name": "哈尔滨", "description": "冰城，俄罗斯风情浓厚", "region": "省会"},
+        "29": {"type": "地级市", "name": "牡丹江", "description": "雪乡所在地，冬季旅游胜地", "region": "地级市"},
+        "30": {"type": "县城", "name": "伊春", "description": "森林城市，空气清新", "region": "县城"},
+        "31": {"type": "县城", "name": "大庆", "description": "石油之城，工业重镇", "region": "县城"},
+        "32": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
+        "33": {"type": "省会", "name": "济南", "description": "泉城，趵突泉天下第一泉", "region": "省会"},
+        "34": {"type": "地级市", "name": "青岛", "description": "海滨城市，啤酒之都", "region": "地级市"},
+        "35": {"type": "县城", "name": "烟台", "description": "葡萄酒之乡，海滨度假胜地", "region": "县城"},
+        "36": {"type": "县城", "name": "威海", "description": "最干净的城市之一，适合养老", "region": "县城"},
+        "37": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+        "38": {"type": "省会", "name": "南京", "description": "六朝古都，历史底蕴深厚", "region": "省会"},
+        "39": {"type": "地级市", "name": "苏州", "description": "园林之城，江南水乡", "region": "地级市"},
+        "40": {"type": "县城", "name": "无锡", "description": "太湖明珠，鱼米之乡", "region": "县城"},
+        "41": {"type": "县城", "name": "常州", "description": "恐龙园所在地，欢乐之城", "region": "县城"},
+        "42": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
+        "43": {"type": "省会", "name": "杭州", "description": "人间天堂，西湖美景", "region": "省会"},
+        "44": {"type": "地级市", "name": "宁波", "description": "港口城市，经济发达", "region": "地级市"},
+        "45": {"type": "县城", "name": "温州", "description": "民营经济之都，商人遍天下", "region": "县城"},
+        "46": {"type": "县城", "name": "绍兴", "description": "鲁迅故乡，黄酒之都", "region": "县城"},
+        "47": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+        "48": {"type": "省会", "name": "福州", "description": "有福之州，三坊七巷", "region": "省会"},
+        "49": {"type": "地级市", "name": "厦门", "description": "海滨城市，鼓浪屿闻名遐迩", "region": "地级市"},
+        # Group 13: 50-53
+        "50": {"type": "省会", "name": "郑州", "description": "中原古都，传说与美食并存，让人流连忘返", "region": "省会"},
+        "51": {"type": "地级市", "name": "洛阳", "description": "牡丹花开的季节，古韵犹存的历史名城", "region": "地级市"},
+        "52": {"type": "县城", "name": "开封", "description": "古风遗韵，包罗万象的美食诱惑", "region": "县城"},
+        "53": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
 
-        "5": {"type": "省会", "name": "广州", "description": "广东省会", "region": "省会"},
-        "17": {"type": "省会", "name": "成都", "description": "四川省会", "region": "省会"},
-        "30": {"type": "省会", "name": "杭州", "description": "浙江省会", "region": "省会"},
-        "42": {"type": "省会", "name": "南京", "description": "江苏省会", "region": "省会"},
-        "6": {"type": "省会", "name": "武汉", "description": "湖北省会", "region": "省会"},
-        "18": {"type": "省会", "name": "长沙", "description": "湖南省会", "region": "省会"},
-        "31": {"type": "省会", "name": "西安", "description": "陕西省会", "region": "省会"},
-        "43": {"type": "省会", "name": "郑州", "description": "河南省会", "region": "省会"},
+        # Group 14: 54-57
+        "54": {"type": "省会", "name": "武汉", "description": "江城魅力，热干面香味四溢", "region": "省会"},
+        "55": {"type": "地级市", "name": "十堰", "description": "山水之间，诗意盎然的汽车之城", "region": "地级市"},
+        "56": {"type": "地级市", "name": "宜昌", "description": "三峡畔的明珠，风光旖旎", "region": "地级市"},
+        "57": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
 
-        "7": {"type": "地级市", "name": "苏州", "description": "江苏重要城市", "region": "地级市"},
-        "20": {"type": "地级市", "name": "青岛", "description": "山东重要城市", "region": "地级市"},
-        "32": {"type": "地级市", "name": "厦门", "description": "福建重要城市", "region": "地级市"},
-        "45": {"type": "地级市", "name": "大连", "description": "辽宁重要城市", "region": "地级市"},
-        "8": {"type": "地级市", "name": "宁波", "description": "浙江重要城市", "region": "地级市"},
-        "21": {"type": "地级市", "name": "无锡", "description": "江苏重要城市", "region": "地级市"},
-        "33": {"type": "地级市", "name": "珠海", "description": "广东重要城市", "region": "地级市"},
-        "46": {"type": "地级市", "name": "深圳", "description": "广东重要城市", "region": "地级市"},
+        # Group 15: 58-61
+        "58": {"type": "省会", "name": "长沙", "description": "星城夜色迷人，辣味十足", "region": "省会"},
+        "59": {"type": "地级市", "name": "株洲", "description": "工业与文化交汇的创新之城", "region": "地级市"},
+        "60": {"type": "县城", "name": "衡阳", "description": "历史悠久，风情万种的小城", "region": "县城"},
+        "61": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
 
-        "2": {"type": "县城", "name": "周庄古镇", "description": "江南水乡", "region": "县城"},
-        "15": {"type": "县城", "name": "凤凰古城", "description": "湘西名城", "region": "县城"},
-        "27": {"type": "县城", "name": "婺源县", "description": "徽派建筑", "region": "县城"},
-        "40": {"type": "县城", "name": "丽江古城", "description": "云南名城", "region": "县城"},
-        "3": {"type": "县城", "name": "乌镇", "description": "浙江古镇", "region": "县城"},
-        "16": {"type": "县城", "name": "平遥古城", "description": "山西古城", "region": "县城"},
-        "28": {"type": "县城", "name": "西塘古镇", "description": "江南古镇", "region": "县城"},
-        "41": {"type": "县城", "name": "阳朔县", "description": "桂林山水", "region": "县城"},
+        # Group 16: 62-65
+        "62": {"type": "省会", "name": "南昌", "description": "英雄城中藏着诗与远方", "region": "省会"},
+        "63": {"type": "地级市", "name": "九江", "description": "鄱阳湖畔，渔歌互答", "region": "地级市"},
+        "64": {"type": "县城", "name": "赣州", "description": "客家文化浓郁，山水画卷般美丽", "region": "县城"},
+        "65": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
 
-        "10": {"type": "乡村", "name": "婺源篁岭", "description": "徽州晒秋", "region": "乡村"},
-        "22": {"type": "乡村", "name": "阿坝草原", "description": "四川草原", "region": "乡村"},
-        "35": {"type": "乡村", "name": "婺源晓起", "description": "徽州村落", "region": "乡村"},
-        "47": {"type": "乡村", "name": "云南梯田", "description": "哈尼梯田", "region": "乡村"},
-        "11": {"type": "乡村", "name": "江西武功山", "description": "高山草甸", "region": "乡村"},
-        "23": {"type": "乡村", "name": "新疆喀纳斯", "description": "图瓦人村落", "region": "乡村"},
-        "36": {"type": "乡村", "name": "福建土楼", "description": "客家文化", "region": "乡村"},
-        "48": {"type": "乡村", "name": "西双版纳", "description": "傣族村寨", "region": "乡村"},
-        "9": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
-        "19": {"type": "机遇", "name": "命运转盘", "description": "触发随机事件", "region": "机遇"},
-        "34": {"type": "机遇", "name": "幸运空间", "description": "触发随机事件", "region": "机遇"},
+        # Group 17: 66-69
+        "66": {"type": "地级市", "name": "泉州", "description": "海上丝路起点，美食与古迹共舞", "region": "地级市"},
+        "67": {"type": "县城", "name": "漳州", "description": "浪漫海风拂面，甜蜜得来不易", "region": "县城"},
+        "68": {"type": "县城", "name": "莆田", "description": "福地宝岛旁的小城，古今传奇", "region": "县城"},
+        "69": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 18: 70-73
+        "70": {"type": "省会", "name": "海口", "description": "热带风情，椰风海韵扑面而来", "region": "省会"},
+        "71": {"type": "地级市", "name": "三亚", "description": "沙滩度假胜地，阳光与海水的浪漫相遇", "region": "地级市"},
+        "72": {"type": "县城", "name": "儋州", "description": "椰林轻拂中感受浓浓岛韵", "region": "县城"},
+        "73": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 19: 74-77
+        "74": {"type": "地级市", "name": "攀枝花", "description": "山城新意，钢铁与彩虹并存", "region": "地级市"},
+        "75": {"type": "县城", "name": "德阳", "description": "吃辣有理，热情满满的小城", "region": "县城"},
+        "76": {"type": "地级市", "name": "乐山", "description": "大佛守望下的美食诱惑", "region": "地级市"},
+        "77": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 20: 78-81
+        "78": {"type": "县城", "name": "泸州", "description": "老酒香浓，水路风光无限", "region": "县城"},
+        "79": {"type": "地级市", "name": "宜宾", "description": "长江之畔，醇酒飘香", "region": "地级市"},
+        "80": {"type": "县城", "name": "内江", "description": "川渝腹地隐秘的小城，低调而迷人", "region": "县城"},
+        "81": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 21: 82-85
+        "82": {"type": "省会", "name": "贵阳", "description": "山城风情，云雾缭绕间别有韵味", "region": "省会"},
+        "83": {"type": "地级市", "name": "遵义", "description": "红色基因与美食交织的热土", "region": "地级市"},
+        "84": {"type": "县城", "name": "安顺", "description": "喀斯特地貌下的神秘美景", "region": "县城"},
+        "85": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 22: 86-89
+        "86": {"type": "县城", "name": "大理", "description": "洱海边的慢生活，诗意与浪漫并存", "region": "县城"},
+        "87": {"type": "地级市", "name": "丽江", "description": "古镇风情，石板路上诉说着故事", "region": "地级市"},
+        "88": {"type": "县城", "name": "西双版纳", "description": "热带雨林的神秘色彩，充满原始魅力", "region": "县城"},
+        "89": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 23: 90-93
+        "90": {"type": "省会", "name": "拉萨", "description": "雪域高原的心脏，虔诚与传奇同行", "region": "省会"},
+        "91": {"type": "地级市", "name": "日喀则", "description": "大昭寺前的转经筒，岁月静好", "region": "地级市"},
+        "92": {"type": "县城", "name": "林芝", "description": "桃花源般的仙境，让人心醉神迷", "region": "县城"},
+        "93": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 24: 94-97
+        "94": {"type": "地级市", "name": "巴彦淖尔", "description": "辽阔草原上偶遇诗与远方", "region": "地级市"},
+        "95": {"type": "县城", "name": "乌海", "description": "荒漠边缘的小城，别有洞天", "region": "县城"},
+        "96": {"type": "地级市", "name": "赤峰", "description": "古韵悠长，草原风情扑面而来", "region": "地级市"},
+        "97": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 25: 98-101
+        "98": {"type": "省会", "name": "西安", "description": "千年古都，每一砖每一瓦都在诉说历史", "region": "省会"},
+        "99": {"type": "地级市", "name": "咸阳", "description": "秦朝余韵犹存，历史厚重感十足", "region": "地级市"},
+        "100": {"type": "县城", "name": "宝鸡", "description": "古乐悠扬，文物藏身的秘境", "region": "县城"},
+        "101": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 26: 102-105
+        "102": {"type": "省会", "name": "兰州", "description": "黄河畔的西北门户，一碗拉面温暖人心", "region": "省会"},
+        "103": {"type": "地级市", "name": "嘉峪关", "description": "长城之端，雄关漫道真如铁", "region": "地级市"},
+        "104": {"type": "县城", "name": "张掖", "description": "丹霞地貌绘出炫目的色彩", "region": "县城"},
+        "105": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 27: 106-109
+        "106": {"type": "省会", "name": "西宁", "description": "青海湖畔的风情万种，宁静致远", "region": "省会"},
+        "107": {"type": "地级市", "name": "格尔木", "description": "戈壁深处的倔强之城", "region": "地级市"},
+        "108": {"type": "县城", "name": "黄南", "description": "藏区风情与祈福共存的小镇", "region": "县城"},
+        "109": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 28: 110-113
+        "110": {"type": "省会", "name": "合肥", "description": "科技与传统交融，活力四射", "region": "省会"},
+        "111": {"type": "地级市", "name": "芜湖", "description": "水上轻歌曼舞，美食香飘万里", "region": "地级市"},
+        "112": {"type": "县城", "name": "蚌埠", "description": "湖畔风情有故事，温情缓缓流淌", "region": "县城"},
+        "113": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 29: 114-117
+        "114": {"type": "地级市", "name": "安庆", "description": "古韵犹存，徽派风情满城飘逸", "region": "地级市"},
+        "115": {"type": "县城", "name": "马鞍山", "description": "铁与火的碰撞，铸就独特风采", "region": "县城"},
+        "116": {"type": "县城", "name": "黄山", "description": "云海奇观，登临绝顶忘返凡尘", "region": "县城"},
+        "117": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 30: 118-121
+        "118": {"type": "地级市", "name": "南阳", "description": "古木参天，历史的深处藏着奇遇", "region": "地级市"},
+        "119": {"type": "县城", "name": "商丘", "description": "古运河畔，小巷故事说不尽", "region": "县城"},
+        "120": {"type": "县城", "name": "新乡", "description": "活力四射，创业激情一触即发", "region": "县城"},
+        "121": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 31: 122-125
+        "122": {"type": "省会", "name": "济南", "description": "泉水叮咚，趵突泉流韵动人", "region": "省会"},
+        "123": {"type": "地级市", "name": "烟台", "description": "海风徐来，渔歌唱晚", "region": "地级市"},
+        "124": {"type": "县城", "name": "潍坊", "description": "风筝故乡，悠闲与热闹并存", "region": "县城"},
+        "125": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 32: 126-129
+        "126": {"type": "地级市", "name": "临沂", "description": "红色故都外的活力拼图", "region": "地级市"},
+        "127": {"type": "县城", "name": "济宁", "description": "孔孟之道余韵悠长，幽默风趣", "region": "县城"},
+        "128": {"type": "县城", "name": "泰安", "description": "泰山之下，笑看风云变幻", "region": "县城"},
+        "129": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 33: 130-133
+        "130": {"type": "地级市", "name": "徐州", "description": "古运河畔，繁华与沧桑共存", "region": "地级市"},
+        "131": {"type": "县城", "name": "常州", "description": "小桥流水人家外，多彩生活启航", "region": "县城"},
+        "132": {"type": "地级市", "name": "南通", "description": "长江北岸的明珠，洋溢着新潮气息", "region": "地级市"},
+        "133": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 34: 134-137
+        "134": {"type": "地级市", "name": "温州", "description": "海边商贸古今交织，总有惊喜等你", "region": "地级市"},
+        "135": {"type": "县城", "name": "绍兴", "description": "酒香与古韵不期而遇，浸润心田", "region": "县城"},
+        "136": {"type": "县城", "name": "金华", "description": "小城故事多，幽默风趣引人入胜", "region": "县城"},
+        "137": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 35: 138-141
+        "138": {"type": "地级市", "name": "吉安", "description": "红色记忆与文艺情怀在此交融", "region": "地级市"},
+        "139": {"type": "县城", "name": "景德镇", "description": "瓷都神韵，白瓷青花讲述千年秘辛", "region": "县城"},
+        "140": {"type": "县城", "name": "萍乡", "description": "小城大爱，幽默风采令人耳目一新", "region": "县城"},
+        "141": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 36: 142-145 (台湾地区)
+        "142": {"type": "直辖市", "name": "台北", "description": "历史与现代交织的繁华都会", "region": "直辖市"},
+        "143": {"type": "地级市", "name": "台中", "description": "温暖阳光下的创意之都，活力无限", "region": "地级市"},
+        "144": {"type": "地级市", "name": "高雄", "description": "港湾城市，浪漫与开放并存", "region": "地级市"},
+        "145": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 37: 146-149 (特别行政区)
+        "146": {"type": "特别行政区", "name": "香港", "description": "东方之珠，璀璨夜景闪耀繁华", "region": "特别行政区"},
+        "147": {"type": "特别行政区", "name": "澳门", "description": "魅力十足的小赌怡情，别样风光", "region": "特别行政区"},
+        "148": {"type": "地级市", "name": "佛山", "description": "武术与陶艺齐飞，美食与工艺共鸣", "region": "地级市"},
+        "149": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 38: 150-153 (新疆部分)
+        "150": {"type": "省会", "name": "乌鲁木齐", "description": "西域风情浓厚，市场与美食齐放异彩", "region": "省会"},
+        "151": {"type": "地级市", "name": "喀什", "description": "古丝路的驿站，神秘与热情共存", "region": "地级市"},
+        "152": {"type": "县城", "name": "哈密", "description": "瓜果飘香中透出丝丝异域风情", "region": "县城"},
+        "153": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 39: 154-157
+        "154": {"type": "地级市", "name": "吐鲁番", "description": "火焰山下，奇观连连眼花缭乱", "region": "地级市"},
+        "155": {"type": "县城", "name": "伊宁", "description": "繁星点点的边陲小镇，别具风味", "region": "县城"},
+        "156": {"type": "地级市", "name": "克拉玛依", "description": "油城魅影，黑金闪耀独特风采", "region": "地级市"},
+        "157": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 40: 158-161
+        "158": {"type": "县城", "name": "武威", "description": "边疆小城，历史与传说交织", "region": "县城"},
+        "159": {"type": "地级市", "name": "酒泉", "description": "长城脚下，月亮与硝烟共诉衷肠", "region": "地级市"},
+        "160": {"type": "县城", "name": "庆阳", "description": "古道边的小镇，笑看云卷云舒", "region": "县城"},
+        "161": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 41: 162-165
+        "162": {"type": "地级市", "name": "海宁", "description": "小商品城外的宁静港湾，别有洞天", "region": "地级市"},
+        "163": {"type": "县城", "name": "嘉兴", "description": "水乡风情浓郁，细雨轻拂心田", "region": "县城"},
+        "164": {"type": "县城", "name": "舟山", "description": "渔火点点中流淌着海的传说", "region": "县城"},
+        "165": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 42: 166-169
+        "166": {"type": "地级市", "name": "连云港", "description": "黄海之滨，浪漫与务实并行", "region": "地级市"},
+        "167": {"type": "县城", "name": "常熟", "description": "江南水乡里，小巷深深见风情", "region": "县城"},
+        "168": {"type": "县城", "name": "泰州", "description": "古韵新风交汇处，幽默故事不断", "region": "县城"},
+        "169": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 43: 170-173
+        "170": {"type": "地级市", "name": "东莞", "description": "制造业名城外，时尚与创意齐飞", "region": "地级市"},
+        "171": {"type": "县城", "name": "惠州", "description": "山海之间，慢生活与甜蜜邂逅", "region": "县城"},
+        "172": {"type": "县城", "name": "汕头", "description": "潮汕文化浓烈，美食与海韵齐放", "region": "县城"},
+        "173": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 44: 174-177
+        "174": {"type": "县城", "name": "自贡", "description": "盐都旧梦今犹在，小巷笑谈间尽显幽默", "region": "县城"},
+        "175": {"type": "地级市", "name": "遂宁", "description": "川西腹地的温情城市，总有惊喜隐现", "region": "地级市"},
+        "176": {"type": "县城", "name": "眉山", "description": "诗意闲适中，火锅香气荡漾", "region": "县城"},
+        "177": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 45: 178-181 (来自山东的新篇章)
+        "178": {"type": "地级市", "name": "德州", "description": "麦香四溢，幽默风趣的古城印记", "region": "地级市"},
+        "179": {"type": "县城", "name": "聊城", "description": "运河之畔，故事与笑谈相伴", "region": "县城"},
+        "180": {"type": "县城", "name": "滨州", "description": "海风与田园共同谱写的轻快旋律", "region": "县城"},
+        "181": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 46: 182-185 (东北风情)
+        "182": {"type": "地级市", "name": "营口", "description": "港口风情浓，海韵与故事漫溢", "region": "地级市"},
+        "183": {"type": "县城", "name": "盘锦", "description": "芦苇荡里，油画般的田园风光", "region": "县城"},
+        "184": {"type": "县城", "name": "阜新", "description": "老工业基地焕发新生，幽默中透着坚韧", "region": "县城"},
+        "185": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 47: 186-189 (山西风光)
+        "186": {"type": "省会", "name": "太原", "description": "古韵与现代交融，煤香中透出诗情", "region": "省会"},
+        "187": {"type": "地级市", "name": "临汾", "description": "黄土高坡上的传奇与幽默并存", "region": "地级市"},
+        "188": {"type": "县城", "name": "运城", "description": "盐湖风情，历史回眸间笑看风云", "region": "县城"},
+        "189": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 48: 190-193 (山西续篇)
+        "190": {"type": "地级市", "name": "长治", "description": "群山环绕，幽默与韵味同在", "region": "地级市"},
+        "191": {"type": "县城", "name": "晋城", "description": "古色古香的小城，总能引发微笑", "region": "县城"},
+        "192": {"type": "县城", "name": "朔州", "description": "北国风光中，悄然藏着逸趣横生", "region": "县城"},
+        "193": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 49: 194-197 (河北韵味)
+        "194": {"type": "县城", "name": "唐山", "description": "钢铁与海风并存，笑看兴衰百态", "region": "县城"},
+        "195": {"type": "地级市", "name": "邯郸", "description": "历史厚重，幽默中透出坚韧的魅力", "region": "地级市"},
+        "196": {"type": "县城", "name": "衡水", "description": "水利与风情同行，质朴中见真章", "region": "县城"},
+        "197": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
+
+        # Group 50: 198-199 (终点归程)
+        "198": {"type": "县城", "name": "塘沽", "description": "海边渔村韵味十足，浓缩咸湿风情", "region": "县城"},
+        "199": {"type": "地级市", "name": "沧州", "description": "曾经是海上丝绸之路的起点", "region": "地级市"}
     },
     "default_block": {"type": "机遇", "name": "命运空间", "description": "触发随机事件", "region": "机遇"}
 }
 
 MAP_TYPE_SYMBOLS = {
-            "首都": "🏰",
-            "直辖市": "🌆",
-            "省会": "🏢",
-            "地级市": "🏣",
+            "首都": "🇨🇳",
+            "直辖市": "🏣",
+            "省会": "🏫",
+            "地级市": "🏢",
             "县城": "🏡",
-            "乡村": "🛖",
             "空地": "⬜",
             "机遇": "🌠",
         }

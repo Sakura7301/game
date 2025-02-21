@@ -70,20 +70,20 @@ class MonopolySystem:
     def calculate_property_price(self, position: int) -> int:
         """计算地块价格"""
         block = self.get_block_info(position)
-        base_price = 500
+        base_price = 1000
 
         # 根据地区类型设置基础价格
         region_multipliers = {
+            "特别行政区": 10.0,
             "直辖市": 5.0,
             "省会": 3.0,
             "地级市": 2.0,
-            "县城": 1.5,
-            "乡村": 1.0,
+            "县城": 1.0,
             "其他": 1.0
         }
 
         # 根据距离起点的远近调整价格
-        distance_factor = 1 + (position % 10) * 0.1
+        distance_factor = 1 + (position % 10) * 0.2
 
         # 计算最终价格
         final_price = int(base_price * region_multipliers[block["region"]] * distance_factor)
@@ -100,19 +100,16 @@ class MonopolySystem:
 
         # 根据地区类型设置租金倍率
         region_multipliers = {
-            "直辖市": 2.0,
-            "省会": 1.5,
-            "地级市": 1.3,
-            "县城": 1.2,
-            "乡村": 1.0,
+            "特别行政区": 5.0,
+            "直辖市": 3.0,
+            "省会": 2.0,
+            "地级市": 1.5,
+            "县城": 1.0,
             "其他": 1.0
         }
 
-        # 根据地产等级增加租金
-        level_multiplier = property_data["level"] * 0.5
-
         # 计算最终租金
-        final_rent = int(base_rent * region_multipliers[block["region"]] * (1 + level_multiplier))
+        final_rent = int(base_rent * region_multipliers[block["region"]] * property_data["level"] * 2)
         return final_rent
 
     def get_property_info(self, position: int) -> dict:

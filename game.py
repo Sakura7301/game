@@ -415,7 +415,7 @@ class Game(Plugin):
             "购买地块": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
             "我的地产": lambda id: self.show_properties(id),
-            "地图": lambda id: self.show_map(id),
+            "地图": lambda id: self.show_map(id, content),
         }
 
         cmd = content.split()[0]
@@ -481,7 +481,7 @@ class Game(Plugin):
 🏠 我的地产 - 查看玩家地产
 🏘️ 购买地块 - 购买地块
 🔧 升级地块 - 升级地块
-🗺️ 地图 - 查看大富翁游戏地图
+🗺️ 地图 [页码] - 查看大富翁游戏地图
 
 其他功能
 ————————————
@@ -948,6 +948,7 @@ class Game(Plugin):
         result = [
             f"🎲 掷出 {steps} 点",
             f"🌍 来到了 {symbol} {block['name']}",
+            f"📜 “{block['description']}”",
             f"━━━━━━━━━━━━━"
         ]
 
@@ -1068,7 +1069,7 @@ class Game(Plugin):
             if property_info is None or 'owner' not in property_info:
                 # 可以购买
                 price = self.monopoly.calculate_property_price(new_position)
-                result.append(f"🌳 这块地还没有主人")
+                result.append(f"⬜ 这块地还没有主人")
                 result.append(f"🗺 区域类型: {block['region']}")
                 result.append(f"💴 需要 {price} 金币")
                 result.append("\n发送'购买地块'即可购买")
@@ -1081,14 +1082,14 @@ class Game(Plugin):
                     owner_player = self.get_player(owner)
                     if owner_player:
                         rent = self.monopoly.calculate_rent(new_position)
-                        if int(player.gold) >= rent:
+                        if player.gold >= rent:
                             # 扣除玩家金币
-                            new_player_gold = int(player.gold) - rent
-                            self._update_player_data(user_id, {'gold': str(new_player_gold)})
+                            new_player_gold = player.gold - rent
+                            updates_info['gold'] = new_player_gold
 
                             # 增加房主金币
-                            owner_new_gold = int(owner_player.gold) + rent
-                            self._update_player_data(owner, {'gold': str(owner_new_gold)})
+                            owner_new_gold = owner_player.gold + rent
+                            self._update_player_data(owner, {'gold': owner_new_gold})
 
                             result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                             result.append(f"🗺 区域类型: {block['region']}")
@@ -1098,6 +1099,7 @@ class Game(Plugin):
                         else:
                             result.append(f"\n你的金币不足以支付 {rent} 金币的租金！")
                             logger.debug(f"玩家 {user_id} 的金币不足以支付租金，当前金币: {player.gold}, 需要租金: {rent}")
+                            updates_info['gold'] = 0
                             # sakura_debug 不足以支付租金，不允许玩家前进
                     else:
                         result.append("⚠️ 地产所有者信息异常，请联系管理员")
@@ -2509,7 +2511,7 @@ class Game(Plugin):
         new_gold = int(player.gold) - price
         if self.monopoly.buy_property(current_position, user_id, price):
             self._update_player_data(user_id, {'gold': str(new_gold)})
-            return f"""🎉 成功购买地块！\n📍 位置: {block['name']}\n🏛️ 类型: {block['type']}\n💴 花费: {price} 金币\n💰 当前金币: {new_gold}"""
+            return f"""🎉 成功购买地块！\n📍 位置: {block['name']}\n🏛️ 类型: {block['type']}\n💴 花费: {price} 金币"""
         else:
             return "😵 购买失败，请稍后再试"
 
@@ -2545,10 +2547,9 @@ class Game(Plugin):
         if self.monopoly.upgrade_property(current_position):
             self._update_player_data(user_id, {'gold': str(new_gold)})
             return f"""🏗️ 地产升级成功！
-位置: {current_position}
-当前等级: {current_level + 1}
-花费: {upgrade_cost} 金币
-当前金币: {new_gold}"""
+📍 位置: {current_position}
+📈 当前等级: {current_level + 1}
+💴 花费: {upgrade_cost} 金币"""
         else:
             return "😵 升级失败，请稍后再试"
 
@@ -2573,23 +2574,46 @@ class Game(Plugin):
 
         return "\n".join(result)
 
-    def show_map(self, user_id):
-        """显示地图状态"""
+    def show_map(self, user_id, content=""):
+        """显示地图状态（分页展示，每页10条数据）"""
         player = self.get_player(user_id)
         if not player:
             return "🤷‍♂️ 您还没有注册游戏"
 
         # 获取玩家当前位置
         current_position = int(getattr(player, 'position', 0))
-
         # 获取地图总格子数
         total_blocks = self.monopoly.map_data["total_blocks"]
+        page_size = 10
 
-        result = ["🗺️ 大富翁地图"]
+        # 如果没有传入页码，则定位到玩家所在的那一页
+        num = current_position // page_size + 1
+        parts = content.split()
+        if len(parts) > 1:
+            try:
+                num = int(parts[1])
+                if num < 1:
+                    num = 1
+            except:
+                num = current_position // page_size + 1
+
+        # 计算总页数
+        total_pages = (total_blocks + page_size - 1) // page_size
+        # 边界判断：确保页码在有效范围内
+        if num < 1:
+            num = 1
+        if num > total_pages:
+            num = total_pages
+
+        # 计算当前页数据起始与结束位置
+        start_index = (num - 1) * page_size
+        end_index = min(num * page_size, total_blocks)
+
+        result = [f"🗺️ 大富翁地图 - 页码 {num}/{total_pages}"]
         result.append("————————————")
 
-        # 生成地图显示
-        for pos in range(total_blocks):
+        # 生成当前页地图显示
+        for pos in range(start_index, end_index):
             block = self.monopoly.get_block_info(pos)
             property_data = self.monopoly.properties_data.get(str(pos), {})
             owner_id = property_data.get('owner')
@@ -2600,12 +2624,10 @@ class Game(Plugin):
             elif block['type'] == '起点':
                 symbol = "🏁"
             elif owner_id:
-                # 如果有主人，显示房屋等级
                 level = property_data.get('level', 1)
-                symbols = ["🏚️", "🏡", "🏢"]  # 不同等级的显示
-                symbol = symbols[level - 1]
+                symbols = ["🏚️", "🏡", "🏙️"]  # 不同等级显示
+                symbol = symbols[min(level - 1, len(symbols) - 1)]
             else:
-                # 根据地块类型显示不同符号
                 symbol = constants.MAP_TYPE_SYMBOLS.get(block['type'], "⬜")
 
             # 添加地块信息
@@ -2615,17 +2637,12 @@ class Game(Plugin):
                 if owner_player:
                     block_info += f"({owner_player.nickname})"
                 else:
-                    block_info += f"(未知)"
-
+                    block_info += "(未知)"
             if pos == current_position:
                 block_info += " ← 当前位置"
-
             result.append(block_info)
 
-            # 每5个地块换行
-            if (pos + 1) % 5 == 0:
-                result.append("————————————")
-
+        result.append("————————————")
         return "\n".join(result)
 
     def gamble(self, user_id, bet_str):
@@ -2650,7 +2667,7 @@ class Game(Plugin):
             '小': 1,       # 赔率 1:1
             '豹子': 35,    # 赔率 35:1
             '顺子': 8,      # 赔率 8:1
-            '对子': 2      # 赔率 2:1
+            '对子': 1.4      # 赔率 2:1
         }
 
         DICE_EMOJI = {
