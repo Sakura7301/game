@@ -253,7 +253,7 @@ class FishingSystem:
             collection += f"   价值: 💰{data['price']}金币\n"
             collection += "──────────────\n"
 
-        if page > 1:
+        if total_pages > 1:
             collection += "💡 发送 图鉴 [页码] - 查看指定页\n"
         collection += "💡 发送 图鉴 [鱼名] - 搜索特定鱼类"
 

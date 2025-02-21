@@ -2474,7 +2474,7 @@ class Game(Plugin):
 
                     # 保存更新后的玩家数据
                     self._update_player_data(target.user_id, updates_info)
-                    return f"🏦 充值成功！\n\n👤目标用户: {target.nickname}\n💰 金额: {amount} 金币。"
+                    return f"🏦 充值成功！\n\n👤 目标用户: {target.nickname}\n💰 金额: {amount} 金币。"
             else:
                 return "⚠️ 请使用正确的格式：充值 @用户名 金额"
         except Exception as e:
@@ -2496,7 +2496,7 @@ class Game(Plugin):
         block = self.monopoly.get_block_info(current_position)
 
         # 检查是否是可购买的地块
-        purchasable_types = ['空地', '直辖市', '省会', '地级市', '县城', '乡村']
+        purchasable_types = ['空地', '直辖市', '省会', '地级市', '县城', '乡村', '特别行政区']
         if block['type'] not in purchasable_types:
             return "🙅‍♂️ 当前位置不是可购买的地块"
 
@@ -2556,9 +2556,9 @@ class Game(Plugin):
         if self.monopoly.upgrade_property(current_position):
             self._update_player_data(user_id, {'gold': str(new_gold)})
             result.append(f"🏗️ 地产升级成功")
-            result.append(f"📍 位置: {current_position}")
+            result.append(f"📍 位置: {block['name']}")
             result.append(f"📈 当前等级: {current_level + 1}")
-            result.append(f"💴 花费: {upgrade_cost} 金币")
+            result.append(f"💳 支付 {upgrade_cost} 金币")
         else:
             result.append("😵 升级失败，请稍后再试")
 
@@ -2605,7 +2605,7 @@ class Game(Plugin):
                 result.append(f"💲 当前租金: {prop_info['rent']} 金币")
 
         # 加入分页提示
-        if page_num > 1:
+        if total_pages > 1:
             result.append("\n————————————")
             result.append(f"💡 发送 我的地产 [页码] 查看指定页")
 
@@ -2657,11 +2657,11 @@ class Game(Plugin):
 
                 # 根据地块类型显示不同符号
                 symbol = constants.MAP_TYPE_SYMBOLS.get(block['type'], "⬜")
-                result.append(f"{symbol}{block['name']}")
-                result.append(f"📜 “{block['description']}”")
+                result.append(f"📍 位置: {symbol}{block['name']}")
+                result.append(f"📜 介绍: “{block['description']}”")
                 result.append(f"🗺 区域类型: {block['region']}")
                 result.append(f"💳 支付 {acquisition_price} 金币")
-                result.append(f"💼 收购成功！")
+                result.append(f"\n💼 收购成功！")
         else:
             result.append("😵 无法获取地主信息，请稍后再试")
 
@@ -2729,12 +2729,12 @@ class Game(Plugin):
         total_blocks = self.monopoly.map_data["total_blocks"]
         page_size = 10
 
-        # 如果没有传入页码，则定位到玩家所在的那一页
-        page_num = current_position // page_size + 1
-        parts = content.split()
-        if len(parts) > 1:
-            if int(parts[1]) < 1:
-                page_num = 1
+        # 从 content 中提取页码
+        try:
+            page_str = content.split("地图")[1].strip() if "地图" in content else "1"
+            page_num = int(page_str) if page_str.isdigit() else 1
+        except (IndexError, ValueError):
+            page_num = 1
 
         # 计算总页数
         total_pages = (total_blocks + page_size - 1) // page_size
@@ -2782,8 +2782,8 @@ class Game(Plugin):
             result.append(block_info)
 
         # 加入分页提示
-        if page_num > 1:
-            result.append("\n————————————")
+        if total_pages > 1:
+            result.append("————————————")
             result.append(f"💡 输入 地图 [页码] 查看指定页")
 
         return "\n".join(result)

@@ -588,7 +588,7 @@ class Player:
         result = [f"🎒 背包物品 - 第 {page_num}/{total_pages} 页"]
         result.extend(all_items[start_index:end_index])
 
-        if page_num > 1:
+        if total_pages > 1:
             # 分页导航提示
             result.append("\n————————————")
             if page_num < total_pages:
