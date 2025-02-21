@@ -325,7 +325,7 @@ SIGN_IN_POEMS = {
 MONOPOLY_MAP = {
     "total_blocks": 200,
     "blocks": {
-        "0": {"type": "起点", "name": "北京", "description": "每次经过可获得200金币", "region": "直辖市"},
+        "0": {"type": "首都", "name": "北京", "description": "每次经过可获得200金币", "region": "直辖市"},
         "1": {"type": "直辖市", "name": "天津", "description": "天津煎饼果子，来了就得吃", "region": "直辖市"},
         "2": {"type": "省会", "name": "石家庄", "description": "河北的省会，离北京很近", "region": "省会"},
         "3": {"type": "机遇", "name": "机遇空间", "description": "触发随机事件", "region": "机遇"},
@@ -605,7 +605,7 @@ MONOPOLY_MAP = {
 }
 
 MAP_TYPE_SYMBOLS = {
-    "首都": "🇨🇳",
+    "首都": "🏯",
     "直辖市": "🏣",
     "省会": "🏫",
     "地级市": "🏢",

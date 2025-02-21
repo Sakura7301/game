@@ -947,7 +947,8 @@ class Game(Plugin):
 
         # 获取当前位置
         current_position = player.position if hasattr(player, 'position') else 0
-        new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
+        # new_position = (current_position + steps) % self.monopoly.map_data["total_blocks"]
+        new_position = 1
 
         # 获取地块信息
         block = self.monopoly.get_block_info(new_position)
@@ -1085,7 +1086,7 @@ class Game(Plugin):
             if property_info is None or 'owner' not in property_info:
                 # 可以购买
                 price = self.monopoly.calculate_property_price(new_position)
-                result.append(f"⬜ 这块地还没有主人")
+                result.append(f"⬜ 此地没有属主")
                 result.append(f"🗺 区域类型: {block['region']}")
                 result.append(f"💴 需要 {price} 金币")
                 result.append("\n💡 发送 [购买地块] 即可购买")
@@ -1098,6 +1099,9 @@ class Game(Plugin):
                     owner_player = self.get_player(owner)
                     if owner_player:
                         rent = self.monopoly.calculate_rent(new_position)
+                        result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
+                        result.append(f"🗺 区域类型: {block['region']}")
+                        result.append(f"💵 租金 {rent} 金币")
                         if player.gold >= rent:
                             # 扣除玩家金币
                             new_player_gold = player.gold - rent
@@ -1106,10 +1110,7 @@ class Game(Plugin):
                             # 增加房主金币
                             owner_new_gold = owner_player.gold + rent
                             self._update_player_data(owner, {'gold': owner_new_gold})
-
-                            result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
-                            result.append(f"🗺 区域类型: {block['region']}")
-                            result.append(f"💸 支付租金 {rent} 金币")
+                            result.append(f"💳 支付租金 {rent} 金币")
                         else:
                             result.append(f"\n😭 兜里的钱不足以支付 {rent} 金币的租金！")
                             logger.debug(f"玩家 {user_id} 的金币不足以支付租金，当前金币: {player.gold}, 需要租金: {rent}")
@@ -1175,7 +1176,7 @@ class Game(Plugin):
             "☀烈日废墟": "沙漠深处的废墟，炽热的阳光让战斗变得更加艰难，怪物潜伏在阴影中。",
             "🌪️沙暴迷城": "被沙暴掩埋的古老城市，能见度极低，敌人可能躲藏在废墟中。",
             "❄️寒冰峡谷": "寒风呼啸的峡谷，冰雪覆盖的地面让战斗更加危险。",
-            "🏯冻土遗迹": "冰原深处的遗迹，寒冷让人难以忍受，敌人隐藏在冰雪之下。",
+            "🧊冻土遗迹": "冰原深处的遗迹，寒冷让人难以忍受，敌人隐藏在冰雪之下。",
             "🟢毒雾沼泽": "沼泽地中弥漫着毒雾，敌人可能隐藏在泥潭深处。",
             "☠️枯骨之地": "沼泽深处堆满了枯骨，传说这里是强大怪物的狩猎场。"
         }
@@ -1331,7 +1332,7 @@ class Game(Plugin):
                 {'name': '冰霜元素❄️', 'hp': int(130 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(12 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 55 * level_factor)},
                 {'name': '极寒古龙🐲', 'hp': int(200 * level_factor), 'attack': int(1.3 * 50 * level_factor), 'defense': int(25 * level_factor), 'exp': int(80 * level_factor), 'gold': int(10 * 100 * level_factor)}
             ],
-            "🏯冻土遗迹": [
+            "🧊冻土遗迹": [
                 {'name': '遗迹守护者🗿', 'hp': int(140 * level_factor), 'attack': int(1.3 * 40 * level_factor), 'defense': int(20 * level_factor), 'exp': int(60 * level_factor), 'gold': int(10 * 75 * level_factor)},
                 {'name': '冰冻骷髅💀', 'hp': int(120 * level_factor), 'attack': int(1.3 * 30 * level_factor), 'defense': int(15 * level_factor), 'exp': int(45 * level_factor), 'gold': int(10 * 55 * level_factor)},
                 {'name': '冻土游魂👻', 'hp': int(100 * level_factor), 'attack': int(1.3 * 25 * level_factor), 'defense': int(12 * level_factor), 'exp': int(38 * level_factor), 'gold': int(10 * 50 * level_factor)},
@@ -2596,12 +2597,14 @@ class Game(Plugin):
         # 获取玩家当前位置
         current_position = int(getattr(player, 'position', 0))
         block = self.monopoly.get_block_info(current_position)
+        # 根据地块类型显示不同符号
+        symbol = constants.MAP_TYPE_SYMBOLS.get(block['type'], "⬜")
         if current_position == 0:
-            return f"🤷‍♂️ 地点[{block['name']}]无法收购！"
+            return f"🤷‍♂️ 地点 [{symbol}{block['name']}] 无法收购！"
 
         property_info = self.monopoly.get_property_info(current_position)
 
-        if property_info is None:
+        if property_info is None or 'owner' not in property_info:
             return f"🤷‍♂️ 地点[{block['name']}]没有属主，无法完成收购！\n你可以直接进行购买\n\n💡 发送 [购买地块] 来购买"
 
         # 检查是否是玩家的地产
@@ -2627,7 +2630,9 @@ class Game(Plugin):
                 # 地块所有权更新
                 self.monopoly.update_property_owner(current_position, player.user_id)
 
-                result.append(f"{block['name']}")
+                # 根据地块类型显示不同符号
+                symbol = constants.MAP_TYPE_SYMBOLS.get(block['type'], "⬜")
+                result.append(f"{symbol}{block['name']}")
                 result.append(f"📜 “{block['description']}”")
                 result.append(f"🗺 区域类型: {block['region']}")
                 result.append(f"💳 支付 {acquisition_price} 金币")
@@ -2671,7 +2676,7 @@ class Game(Plugin):
 
                 result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                 result.append(f"🗺 区域类型: {block['region']}")
-                result.append(f"💸 支付租金 {rent} 金币")
+                result.append(f"💳 支付租金 {rent} 金币")
                 result.append(f"🤝 您已成功支付租金，可以继续行动了！")
                 # 重置标记
                 updates_info['is_pay_rent'] = 0
@@ -2734,7 +2739,7 @@ class Game(Plugin):
             # 获取地块显示符号
             if pos == current_position:
                 symbol = "👤"  # 玩家当前位置
-            elif block['type'] == '起点':
+            elif block['type'] == '首都':
                 symbol = "🏁"
             elif owner_id:
                 level = property_data.get('level', 1)

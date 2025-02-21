@@ -52,7 +52,7 @@ class MonopolySystem:
 
     def get_property_owner(self, position: int) -> Optional[str]:
         """获取地块所有者"""
-        return self.properties_data.get(position)
+        return self.properties_data.get(str(position))
 
     def buy_property(self, position: int, player_id: str, price: int) -> bool:
         """购买地块"""
