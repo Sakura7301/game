@@ -112,11 +112,37 @@ class MonopolySystem:
         final_rent = int(base_rent * region_multipliers[block["region"]] * property_data["level"] * 2)
         return final_rent
 
+    def calculate_price(self, rent, level, multiplier=1):
+        """
+        根据租金（rent）和等级（level）计算价值（price）的函数。
+
+        Args:
+            rent (float): 地块的租金。
+            level (int): 地块的等级（≥ 0）。
+            multiplier (float): 等级对价值的影响倍数（默认为 1）。
+
+        Returns:
+            float: 计算得到的地块价值（price）。
+        """
+        if rent < 0 or level < 0:
+            raise ValueError("rent 和 level 必须是非负数")
+        if multiplier <= 0:
+            raise ValueError("multiplier 必须是正数")
+
+        # 核心计算公式
+        price = rent * (1 + level * multiplier)
+        return price
+
     def get_property_info(self, position: int) -> dict:
         """获取地产详细信息"""
         property_data = self.properties_data.get(str(position))
         if not property_data:
             return None
+        # 计算租金
+        rent = self.calculate_rent(position)
+
+        # 计算地产价值
+        price = self.calculate_price(rent, property_data["level"])
 
         block = self.get_block_info(position)
         return {
@@ -124,8 +150,8 @@ class MonopolySystem:
             "type": block["type"],
             "region": block["region"],
             "level": property_data["level"],
-            "price": property_data["price"],
-            "rent": self.calculate_rent(position),
+            "price": price,
+            "rent": rent,
             "owner": property_data["owner"]
         }
 
