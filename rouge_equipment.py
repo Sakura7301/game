@@ -603,7 +603,7 @@ class RougeEquipment:
             -------------------------------------------------
         """
         random.seed(time.time_ns())
-        attack = int(round((10 + 3 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
+        attack = int(round((10 + 5 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
         defense = 0
         max_hp = 0
         price = price = int(round((100 * level) * factor * 5))
@@ -617,8 +617,8 @@ class RougeEquipment:
         """
         random.seed(time.time_ns())
         attack = 0
-        defense = int(round((10 + 3 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
-        max_hp = int(round((10 + 3 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
+        defense = int(round((10 + 5 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
+        max_hp = int(round((10 + 10 * level) * factor * (1 + random.uniform(-0.1, 0.2))))
         price = int(round((150 * level) * factor * 5))
         return attack, defense, max_hp, price
 
