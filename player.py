@@ -590,11 +590,8 @@ class Player:
 
         if total_pages > 1:
             # 分页导航提示
-            result.append("\n————————————")
-            if page_num < total_pages:
-                result.append(f"➡️ 发送 [背包 {page_num + 1}] 查看下一页")
-            if page_num > 1:
-                result.append(f"⬅️ 发送 [背包 {page_num - 1}] 查看上一页")
+            result.append("\n──────────────")
+            result.append(f"💡 发送 背包 [页码] 查看指定页")
 
         # 删除末尾空行
         if result[-1] == "":

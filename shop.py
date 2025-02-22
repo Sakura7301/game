@@ -463,14 +463,14 @@ class Shop:
         current_items = item_list[start:end]
 
         shop_list = f"📦 商店物品列表 (第{page}/{total_pages}页)\n"
-        shop_list += "━━━━━━━━━━━━━━━\n\n"
+        shop_list += "──────────────\n\n"
 
         for item in current_items:
             shop_list += f"🔸 {item['name']}\n"
             shop_list += f"└─ 💰{item['price']}金币\n"
             shop_list += f"└─ 📝{item['explain']}\n\n"
 
-        shop_list += "━━━━━━━━━━━━━━━\n"
+        shop_list += "──────────────\n"
         shop_list += "💡 发送 商店 [页码] 查看其他页"
 
         return shop_list

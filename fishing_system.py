@@ -170,14 +170,14 @@ class FishingSystem:
 
             stars = "⭐" * int(caught_fish.get('rarity', 1))
             message = f"{random.choice(fishing_messages)}\n"
-            message += f"━━━━━━━━━━━━━\n"
+            message += f"──────────────\n"
             message += f"🎣 你钓到了 {caught_fish['name']}\n"
             message += f"      \"{caught_fish['explain']}\"\n"
             message += f"📊 稀有度: {stars}\n"
             message += f"💰 基础价值: {caught_fish.get('price', '0')}金币\n"
             message += f"🪙 金币奖励: {coins_reward}金币\n"
             message += f"📚 经验奖励: {exp_reward}经验\n"
-            message += f"━━━━━━━━━━━━━"
+            message += f"──────────────"
 
             return {
                 'success': True,
@@ -197,7 +197,7 @@ class FishingSystem:
             ]
 
             message = f"{random.choice(fail_messages)}\n"
-            message += f"━━━━━━━━━━━━━\n"
+            message += f"──────────────\n"
 
             return {
                 'success': False,
@@ -229,7 +229,7 @@ class FishingSystem:
                 return f"未找到包含 '{search_term}' 的鱼类"
 
         # 分页处理
-        items_per_page = 20
+        items_per_page = 5
         total_pages = (len(sorted_fish) + items_per_page - 1) // items_per_page
 
         if page < 1 or page > total_pages:
@@ -241,7 +241,7 @@ class FishingSystem:
 
         # 生成图鉴信息
         collection = f"📖 鱼类图鉴 (第{page}/{total_pages}页)\n"
-        collection += "══════════════════\n\n"
+        collection += "──────────────\n"
 
         for fish_name, data in page_fish:
             count = data['amount']

@@ -965,7 +965,7 @@ class Game(Plugin):
             f"🎲 掷出 {steps} 点",
             f"🌍 来到了 {symbol} {block['name']}",
             f"📜 “{block['description']}”",
-            f"━━━━━━━━━━━━━"
+            f"──────────────"
         ]
 
         updates_info = {}
@@ -1080,7 +1080,7 @@ class Game(Plugin):
                     else:
                         # 暂未支持的key
                         result.append(f"暂不支持的事件: {key}")
-        elif block['type'] in ['空地', '直辖市', '省会', '地级市', '县城', '乡村']:
+        elif block['type'] in ['空地', '特别行政区', '直辖市', '省会', '地级市', '县城']:
             property_info = self.monopoly.get_property_owner(new_position)
             if property_info is None or 'owner' not in property_info:
                 # 可以购买
@@ -1647,10 +1647,14 @@ class Game(Plugin):
         item_description = inventory.get(item_name, {}).get("description", {})
 
         item_hp = item_description.get("hp", 0)
+
+        result = []
+
         # 检查背包中是否有足够的物品
         item_count = inventory[item_name]["amount"]
         if item_count < amount:
-            return f"🤷‍♂️ 背包中只有 {item_count} 个 {item_name}"
+            result.append(f"🥤 背包中只有 {item_count} 个 {item_name}\n")
+            item_count = amount
 
         if player.hp == player.max_hp:
             return "🙅‍♂️ 您的生命值已满，无需回复。"
@@ -1658,18 +1662,26 @@ class Game(Plugin):
         # 计算恢复效果
         current_hp = int(player.hp)
         max_hp = int(player.max_hp)
+        lack_hp = max_hp - current_hp
         heal_amount = item_hp * amount
-
-        # 计算新的生命值
-        new_hp = min(current_hp + heal_amount, max_hp)
+        if heal_amount > lack_hp:
+            # 可以回复的血量大于当前缺失的血量，需要计算最大消耗物品的数量
+            real_item_count = (lack_hp + item_hp - 1) // item_hp
+            # 计算新的生命值
+            new_hp = max_hp
+        else:
+            # 可以回复的血量小于当前缺失的血量，使用了amount个物品
+            real_item_count = amount
+            # 计算新的生命值
+            new_hp = min(current_hp + heal_amount, max_hp)
 
         # 从背包中移除物品
-        if item_count == amount:
+        if item_count == real_item_count:
             del inventory[item_name]
         else:
-            inventory[item_name]["amount"] -= amount
+            inventory[item_name]["amount"] -= real_item_count
 
-        # 更新玩家数据时添加使用时间
+        # 更新玩家数据
         updates = {
             'inventory': inventory,
             'hp': new_hp
@@ -1677,7 +1689,11 @@ class Game(Plugin):
 
         self._update_player_data(user_id, updates)
 
-        return f"使用 {amount} 个 {item_name}，恢复 {new_hp - current_hp} 点生命值！\n当前生命值: {new_hp}/{max_hp}"
+        result.append(f"🧉 使用 {real_item_count} 个 {item_name}")
+        result.append(f"💕 恢复 {new_hp - current_hp} 点生命值！")
+        result.append(f"\n❤️ 当前生命值: {new_hp}/{max_hp}")
+
+        return "\n".join(result)
 
     def get_player_status(self, user_id, detail=False):
         """获取玩家状态"""
@@ -2606,7 +2622,7 @@ class Game(Plugin):
 
         # 加入分页提示
         if total_pages > 1:
-            result.append("\n————————————")
+            result.append("\n──────────────")
             result.append(f"💡 发送 我的地产 [页码] 查看指定页")
 
         return "\n".join(result)
@@ -2749,7 +2765,7 @@ class Game(Plugin):
         end_index = min(page_num * page_size, total_blocks)
 
         result = [f"🗺️ 大富翁地图 - 页码 {page_num}/{total_pages}"]
-        result.append("————————————")
+        result.append("──────────────")
 
         # 生成当前页地图显示
         for pos in range(start_index, end_index):
@@ -2783,8 +2799,8 @@ class Game(Plugin):
 
         # 加入分页提示
         if total_pages > 1:
-            result.append("————————————")
-            result.append(f"💡 输入 地图 [页码] 查看指定页")
+            result.append("──────────────")
+            result.append(f"💡 发送 地图 [页码] 查看指定页")
 
         return "\n".join(result)
 
@@ -2910,6 +2926,6 @@ class Game(Plugin):
         })
 
         payout = abs(payout)
-        result_str = f"━━━━━━━━━━━━━━━\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n\n{'🤩 恭喜您赢得了' if win else '😢 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n━━━━━━━━━━━━━━━"
+        result_str = f"──────────────\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n\n{'🤩 恭喜您赢得了' if win else '😢 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n──────────────"
 
         return result_str
