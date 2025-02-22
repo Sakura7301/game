@@ -1130,6 +1130,8 @@ class Game(Plugin):
                         result.append(f"💴 租金: {rent}")
                         result.append("\n💡 发送 [升级地块] 进行升级")
                     logger.debug(f"玩家 {user_id} 访问了自己的地盘，位置: {new_position}")
+        else:
+            result.append(f"❓ 未知区域类型: {block['type']}")
 
         # 更新玩家信息
         self._update_player_data(user_id, updates_info)
@@ -2571,7 +2573,7 @@ class Game(Plugin):
         new_gold = int(player.gold) - upgrade_cost
         if self.monopoly.upgrade_property(current_position):
             self._update_player_data(user_id, {'gold': str(new_gold)})
-            result.append(f"🏗️ 地产升级成功")
+            result.append(f"🏗️ 地产升级成功\n")
             result.append(f"📍 位置: {block['name']}")
             result.append(f"📈 当前等级: {current_level + 1}")
             result.append(f"💳 支付 {upgrade_cost} 金币")
@@ -2745,15 +2747,25 @@ class Game(Plugin):
         total_blocks = self.monopoly.map_data["total_blocks"]
         page_size = 10
 
-        # 从 content 中提取页码
-        try:
-            page_str = content.split("地图")[1].strip() if "地图" in content else "1"
-            page_num = int(page_str) if page_str.isdigit() else 1
-        except (IndexError, ValueError):
-            page_num = 1
-
         # 计算总页数
         total_pages = (total_blocks + page_size - 1) // page_size
+
+        # 默认页码：玩家当前位置所在页（当前位置从 0 开始，所以需要 +1）
+        default_page = (current_position // page_size) + 1
+
+        # 从 content 中提取页码
+        try:
+            if "地图" in content:
+                # 尝试提取用户输入的页码
+                page_str = content.split("地图")[1].strip()
+                # 如果用户输入的是数字，则使用用户输入的，否则使用默认页码
+                page_num = int(page_str) if page_str.isdigit() else default_page
+            else:
+                # 没有输入页码时，使用默认页码
+                page_num = default_page
+        except (IndexError, ValueError):
+            page_num = default_page
+
         # 边界判断：确保页码在有效范围内
         if page_num < 1:
             page_num = 1
@@ -2773,28 +2785,28 @@ class Game(Plugin):
             property_data = self.monopoly.properties_data.get(str(pos), {})
             owner_id = property_data.get('owner')
 
-            # 获取地块显示符号
+            # 玩家当前位置
             if pos == current_position:
-                symbol = "👤"  # 玩家当前位置
-            elif block['type'] == '首都':
+                arrows_symbol = "◉"
+            else:
+                arrows_symbol = "➢"
+
+            # 获取地块显示符号
+            if block['type'] == '首都':
                 symbol = "🏁"
-            elif owner_id:
-                level = property_data.get('level', 1)
-                symbols = ["🏚️", "🏡", "🏙️"]  # 不同等级显示
-                symbol = symbols[min(level - 1, len(symbols) - 1)]
             else:
                 symbol = constants.MAP_TYPE_SYMBOLS.get(block['type'], "⬜")
 
             # 添加地块信息
-            block_info = f"{symbol} {pos}:{block['name']}"
+            block_info = f"{arrows_symbol} {pos}: {symbol}{block['name']}"
             if owner_id:
                 owner_player = self.get_player(owner_id)
                 if owner_player:
-                    block_info += f"({owner_player.nickname})"
+                    block_info += f"(Lv.{property_data.get('level', 1)}|{owner_player.nickname})"
                 else:
                     block_info += "(未知)"
             if pos == current_position:
-                block_info += " ← 当前位置"
+                block_info += " ←👤"
             result.append(block_info)
 
         # 加入分页提示
