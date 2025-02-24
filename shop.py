@@ -410,7 +410,7 @@ class Shop:
         if player.gold < total_price:
             max_possible = player.gold // item_price
             if max_possible <= 0:
-                return f"😭 无法购买任何 [{item_name}]（单价: {item_price}🪙）\n💳 当前余额: {player.gold}🪙\n"
+                return f"😭 无法购买任何 [{item_name}]（单价: {item_price}🪙）\n\n💳 当前余额: {player.gold}🪙"
             adjusted = True
             amount = max_possible
             total_price = amount * item_price
