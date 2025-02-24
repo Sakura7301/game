@@ -734,10 +734,25 @@ class Game(Plugin):
             attack_multiple = get_multiple('attack', multiple)[0]
             defense_multiple = get_multiple('defense', multiple)[0]
             max_hp_multiple = get_multiple('max_hp', multiple)[0]
-        # 计算新的三维
-        new_max_hp = int((player.max_hp + (constants.PLAYER_LEVEL_UP_APPEND_HP * level_difference)) * max_hp_multiple)
-        new_attack = int((player.attack + (constants.PLAYER_LEVEL_UP_APPEND_ATTACK * level_difference)) * attack_multiple)
-        new_defense = int((player.defense + (constants.PLAYER_LEVEL_UP_APPEND_DEFENSE * level_difference)) * defense_multiple)
+        # 获取装备攻击加成
+        equipped_weapon = self.rouge_equipment_system.get_equipment_by_id(player.equipment_weapon)
+        if equipped_weapon:
+            attack_bonus = equipped_weapon.get('attack_bonus', 0)
+        else:
+            attack_bonus = 0
+        # 获取装备防御/生命加成
+        equipped_armor = self.rouge_equipment_system.get_equipment_by_id(player.equipment_armor)
+        if equipped_armor:
+            defense_bonus = equipped_armor.get('defense_bonus', 0)
+            max_hp_bonus = equipped_armor.get('max_hp_bonus', 0)
+        else:
+            defense_bonus = 0
+            max_hp_bonus = 0
+        # 计算新的攻击力
+        new_attack = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * attack_multiple)
+        # 计算新的防御/生命
+        new_defense = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus) * defense_multiple)
+        new_max_hp = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * max_hp_multiple)
         # 更新玩家数据
         updates['level'] = new_level
         updates['exp'] = new_exp

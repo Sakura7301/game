@@ -730,7 +730,7 @@ class RougeEquipment:
 
             # 基础信息
             base_info = (
-                f"{type_emoji}  [{equipment.get('name', '未知')}{rarity_emoji}]\n"
+                f"{type_emoji} [{equipment.get('name', '未知')}{rarity_emoji}]\n"
                 # f"🆔 ID：{equipment.get('id')}\n"
                 f"  📈 等级：{equipment.get('level', 1)}\n"
                 f"  💎 稀有度：{stars}\n"

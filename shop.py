@@ -252,6 +252,7 @@ class Shop:
         report = ""
         # 是否出售的标志
         sale_flag = False
+        report = []
 
         # 解析出售内容
         result = self.parse_equipment_sale(content)
@@ -292,12 +293,12 @@ class Shop:
             player_update_gold = player.gold + actual_gold
 
             # 生成出售报告
-            report += "🏪 出售所有物品成功:\n"
+            report.append("🏪 出售所有物品成功:")
             for item_name in for_order_property:
-                report += f"  {item_name}x{for_order_property[item_name]}\n"
-            report += f"💰 基础价值：{total_gold}金币\n"
-            report += f"♻️ 回收比例：80%\n"
-            report += f"共获得 {actual_gold} 金币"
+                report.append(f"   - [{item_name}]x{for_order_property[item_name]}")
+            report.append(f"💰 基础价值：{total_gold}金币")
+            report.append(f"♻️ 回收比例：80%")
+            report.append(f"\n共获得 {actual_gold} 金币")
             # 设置售出标志
             sale_flag = True
         # 单个出售
@@ -315,7 +316,8 @@ class Shop:
                 item_price = inventory[item_name]["price"]
                 item_hold_num = inventory[item_name]["amount"]
                 if item_hold_num < amount:
-                    return f"🤷‍♂️ 背包中只有 {item_hold_num} 个 {item_name}"
+                    report.append(f"🎒 背包中只有 {item_hold_num} 个 {item_name}\n")
+                    amount = item_hold_num
                 else:
                     remain_num = item_hold_num - amount
             else:
@@ -333,15 +335,15 @@ class Shop:
             # 计算更新后的金币
             player_update_gold = player.gold + total_sell_price
 
-            report += "🏪出售物品成功:\n"
-            report += f"[{item_name}]\n"
-            report += f"💰基础价值：{item_price}金币\n"
-            report += f"♻️回收比例：80%\n"
-            report += f"成功出售 {amount} 个 {item_name}，获得{total_sell_price}金币"
+            report.append(f"🏪 出售物品成功:")
+            report.append(f"    - {item_name}x{amount}")
+            report.append(f"💰 基础价值：{item_price}金币")
+            report.append(f"♻️ 回收比例：80%")
+            report.append(f"\n获得 {total_sell_price} 金币")
             # 设置售出标志
             sale_flag = True
         else:
-            report += "❌ 无效的出售命令"
+            report.append("❌ 无效的出售命令")
 
         if sale_flag:
             # 更新玩家数据
@@ -351,19 +353,19 @@ class Shop:
             }
             # 保存更新后的玩家数据
             self.game._update_player_data(player.user_id, updates)
-        return report
+        return "\n".join(report)
 
     def get_item_quantity(self, inventory, item_name):
         return inventory.get(item_name, {}).get("amount", "0")
 
     def buy_item(self, user_id, content):
-        """购买物品功能"""
+        """购买物品功能，支持自动调整购买数量到最大可购买量"""
         parts = content.split()
         if len(parts) < 2:
             return "🤷‍♂️ 请指定要购买的物品名称"
 
         item_name = parts[1]
-        # 获取购买数量,默认为1
+        # 获取购买数量，默认为1
         amount = 1
         if len(parts) > 2:
             try:
@@ -390,7 +392,6 @@ class Shop:
                 item_uuid = item["uuid"]
                 item_type = item["type"]
                 item_price = item["price"]
-
                 item_dict = {
                     "uuid": item_uuid,
                     "type": item_type,
@@ -399,47 +400,52 @@ class Shop:
                     "description": item["description"],
                     "explain": item["explain"]
                 }
-                # 找到物品后跳出循环
                 break
 
-        # 计算总价
+        # 计算总价并检查金币
+        adjusted = False
         total_price = item_price * amount
 
-        # 检查金币是否足够
+        # 自动调整购买数量逻辑
         if player.gold < total_price:
-            return f"😭 您的余额不足！\n💲 费用 {total_price} 金币\n💳 您的余额：{player.gold}"
+            max_possible = player.gold // item_price
+            if max_possible <= 0:
+                return f"😭 无法购买任何 [{item_name}]（单价: {item_price}🪙）\n💳 当前余额: {player.gold}🪙\n"
+            adjusted = True
+            amount = max_possible
+            total_price = amount * item_price
 
         # 更新玩家金币和背包
         player.gold -= total_price
-
-        # 如果背包已经有这个物品,则增加数量
         if item_name in inventory:
             inventory[item_name]["amount"] += amount
         else:
             item_dict["amount"] = amount
             inventory[item_name] = item_dict
 
-        updates_info = {
+        # 保存数据更新
+        self.game._update_player_data(player.user_id, {
             "gold": player.gold,
-            "inventory": inventory,
-        }
+            "inventory": inventory
+        })
 
-        # 保存更新后的玩家数据
-        self.game._update_player_data(player.user_id, updates_info)
-
-        # 提示装备类型物品可以装备
+        # 构建操作提示
         instructions_str = ""
         if item_type in ['weapon', 'armor']:
             equip_type = '武器' if item_type == 'weapon' else '护甲'
-            instructions_str = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}。"
+            instructions_str = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}"
         elif item_type == 'fishing_rod':
-            instructions_str = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
+            instructions_str = f"\n💡 发送 [装备 {item_name}] 来使用此鱼竿"
         elif item_type == 'consumable':
-            instructions_str = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
+            instructions_str = f"\n💡 发送 [使用 {item_name}] 来使用此消耗品"
         elif item_type == 'name_change_card':
-            instructions_str = f"\n💡 发送 [改名 昵称] 来使用此改名卡。"
+            instructions_str = f"\n💡 发送 [改名 新昵称] 来使用改名卡"
 
-        return f"🛒 成功购买 {amount} 个 {item_name}\n💲 花费: {total_price} 🪙\n💳 余额: {player.gold}\n{instructions_str}"
+        # 构建返回消息
+        base_msg = f"🛒 成功购买 {amount} 个 {item_name}\n💲 总花费: {total_price}🪙\n💳 当前余额: {player.gold}🪙\n"
+        if adjusted:
+            base_msg = f"⚠️ 余额不足，已自动调整购买数量为{amount}个\n\n{base_msg}"
+        return f"{base_msg}{instructions_str}"
 
     def show_shop(self, content=""):
         """显示商店物品列表"""
