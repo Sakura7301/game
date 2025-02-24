@@ -44,7 +44,8 @@ class Shop:
 
     def _initialize_database(self) -> None:
         """
-        创建商店物品的数据表，如果它尚不存在且表为空，则插入数据。
+        创建商店物品的数据表，并检查是否需要更新数据：当 constants.SHOP_ITEMS 中的物品多于数据库中的时候，
+        会将缺失的物品插入到数据库中。
         """
         # 处理数据，生成 uuid 并保留所需字段
         all_items = [
@@ -74,20 +75,21 @@ class Shop:
                 )
                 ''')
 
-                # 检查表中是否已有数据
-                cursor = self.conn.execute('SELECT COUNT(*) FROM shop')
-                record_count = cursor.fetchone()[0]
+                # 查询数据库中已有的物品（依据name字段判断是否存在）
+                cursor = self.conn.execute('SELECT name FROM shop')
+                existing_names = set([row[0] for row in cursor.fetchall()])
 
-                # 只有表为空时才插入数据
-                if record_count == 0:
-                    # 插入数据
+                # 筛选出常量中存在而数据库中缺失的物品
+                new_items = [item for item in all_items if item["name"] not in existing_names]
+
+                if new_items:
                     self.conn.executemany('''
                     INSERT INTO shop (uuid, name, type, explain, price, rarity, description)
                     VALUES (:uuid, :name, :type, :explain, :price, :rarity, :description)
-                    ''', all_items)
-                    logger.debug("成功初始化商店的数据表并插入数据。")
+                    ''', new_items)
+                    logger.debug(f"成功添加 {len(new_items)} 个新物品到商店数据表。")
                 else:
-                    logger.debug("商店的数据表已存在并包含数据，跳过插入操作。")
+                    logger.debug("商店数据表已包含所有物品，不需要更新。")
         except sqlite3.Error as e:
             logger.error(f"初始化商店的数据表失败: {e}")
             raise
@@ -234,7 +236,7 @@ class Shop:
 
             return (rarity, equipment_type)
         else:
-            logger.error("输入的文本格式不正确，正确格式应为：出售 所有[可选颜色或品质][装备|武器|消耗品|鱼竿|鱼|鱼类]")
+            logger.error("❌ 输入的文本格式不正确，正确格式应为：出售 所有[可选颜色或品质][装备|武器|消耗品|鱼竿|鱼|鱼类]")
             return None
 
     def sell_item(self, user_id, content):
@@ -242,7 +244,7 @@ class Shop:
         # 检查玩家是否存在
         player = self.game.get_player(user_id)
         if not player:
-            return "您还没注册,请先注册"
+            return "🤷‍♂️ 您还没有注册游戏"
 
         # 预初始化稀有度和类型
         rarity = -1
@@ -259,7 +261,7 @@ class Shop:
         # 获取背包中的物品
         inventory = player.inventory
         if not inventory:
-            return "背包是空的,没有可以出售的物品"
+            return "🤷‍♂️ 背包是空的,没有可以出售的物品"
 
         for_order_property = {}
         # 批量出售
@@ -290,11 +292,11 @@ class Shop:
             player_update_gold = player.gold + actual_gold
 
             # 生成出售报告
-            report += "🏪出售所有物品成功:\n"
+            report += "🏪 出售所有物品成功:\n"
             for item_name in for_order_property:
                 report += f"  {item_name}x{for_order_property[item_name]}\n"
-            report += f"💰基础价值：{total_gold}金币\n"
-            report += f"♻️回收比例：80%\n"
+            report += f"💰 基础价值：{total_gold}金币\n"
+            report += f"♻️ 回收比例：80%\n"
             report += f"共获得 {actual_gold} 金币"
             # 设置售出标志
             sale_flag = True
@@ -305,7 +307,7 @@ class Shop:
                 item_name = parts[1]
                 amount = int(parts[2]) if len(parts) > 2 else 1
             except (IndexError, ValueError):
-                return "出售格式错误！请使用: 出售 物品名 [数量]"
+                return "❌ 出售格式错误！请使用: 出售 物品名 [数量]"
 
             remain_num = 0
             # 获取物品属性
@@ -313,11 +315,11 @@ class Shop:
                 item_price = inventory[item_name]["price"]
                 item_hold_num = inventory[item_name]["amount"]
                 if item_hold_num < amount:
-                    return f"背包中只有 {item_hold_num} 个 {item_name}"
+                    return f"🤷‍♂️ 背包中只有 {item_hold_num} 个 {item_name}"
                 else:
                     remain_num = item_hold_num - amount
             else:
-                return f"玩家 [{player.nickname}] 的背包中没有物品 [{item_name}]"
+                return f"🤷‍♂️ 玩家 [{player.nickname}] 的背包中没有物品 [{item_name}]"
 
             # 计算出售价格（原价的80%）
             sell_price = int(item_price * 0.8)
@@ -339,7 +341,7 @@ class Shop:
             # 设置售出标志
             sale_flag = True
         else:
-            report += "无效的出售命令"
+            report += "❌ 无效的出售命令"
 
         if sale_flag:
             # 更新玩家数据
@@ -358,7 +360,7 @@ class Shop:
         """购买物品功能"""
         parts = content.split()
         if len(parts) < 2:
-            return "请指定要购买的物品名称"
+            return "🤷‍♂️ 请指定要购买的物品名称"
 
         item_name = parts[1]
         # 获取购买数量,默认为1
@@ -367,18 +369,18 @@ class Shop:
             try:
                 amount = int(parts[2])
                 if amount <= 0:
-                    return "购买数量必须大于0"
+                    return "🤷‍♂️ 购买数量必须大于0"
             except ValueError:
-                return "购买数量必须是正整数"
+                return "🤷‍♂️ 购买数量必须是正整数"
 
         # 获取物品信息
         if not any(item["name"] == item_name for item in self.shop_items):
-            return "商店里没有这个物品"
+            return f"🤷‍♂️ 商店里没有物品 [{item_name}]"
 
         # 获取玩家信息
         player = self.game.get_player(user_id)
         if not player:
-            return "您还没注册..."
+            return "🤷‍♂️ 您还没有注册游戏"
 
         # 获取玩家背包
         inventory = player.inventory
@@ -405,7 +407,7 @@ class Shop:
 
         # 检查金币是否足够
         if player.gold < total_price:
-            return f"😭 您的余额不足！\n💰 费用 {total_price} 金币\n💳 您的余额：{player.gold}"
+            return f"😭 您的余额不足！\n💲 费用 {total_price} 金币\n💳 您的余额：{player.gold}"
 
         # 更新玩家金币和背包
         player.gold -= total_price
@@ -426,16 +428,18 @@ class Shop:
         self.game._update_player_data(player.user_id, updates_info)
 
         # 提示装备类型物品可以装备
-        equip_hint = ""
+        instructions_str = ""
         if item_type in ['weapon', 'armor']:
-            equip_type = "武器" if item_type == 'weapon' else "护甲"
-            equip_hint = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}。"
+            equip_type = '武器' if item_type == 'weapon' else '护甲'
+            instructions_str = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}。"
         elif item_type == 'fishing_rod':
-            equip_hint = f"\n💡 发送 [装备 {item_name}] 来装备此物品。"
+            instructions_str = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
         elif item_type == 'consumable':
-            equip_hint = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
+            instructions_str = f"\n💡 发送 [使用 {item_name}] 来使用此物品。"
+        elif item_type == 'name_change_card':
+            instructions_str = f"\n💡 发送 [改名 昵称] 来使用此改名卡。"
 
-        return f"🛒 成功购买 {amount} 个 {item_name}\n💴 花费: {total_price} 金币\n💰 剩余金币: {player.gold}\n{equip_hint}"
+        return f"🛒 成功购买 {amount} 个 {item_name}\n💲 花费: {total_price} 🪙\n💳 余额: {player.gold}\n{instructions_str}"
 
     def show_shop(self, content=""):
         """显示商店物品列表"""
@@ -467,8 +471,8 @@ class Shop:
 
         for item in current_items:
             shop_list += f"🔸 {item['name']}\n"
-            shop_list += f"└─ 💰{item['price']}金币\n"
-            shop_list += f"└─ 📝{item['explain']}\n\n"
+            shop_list += f"└─ 💲 {item['price']}金币\n"
+            shop_list += f"└─ 📝 {item['explain']}\n\n"
 
         shop_list += "──────────────\n"
         shop_list += "💡 发送 商店 [页码] 查看其他页"

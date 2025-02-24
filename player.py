@@ -1,6 +1,8 @@
 import csv
 import json
+import time
 import logging
+from .utils import get_multiple
 from . import constants
 from typing import Dict, Any, Optional
 
@@ -234,6 +236,56 @@ class Player:
             self.data['inventory'] = json.dumps(value, ensure_ascii=False)
         except (TypeError, ValueError) as e:
             logging.error(f"设置 inventory 时出错: {e}，不更新该值")
+
+    @property
+    def multiple(self) -> dict:
+        """
+        获取库存信息，以字典形式返回。
+        字典的键为物品的名称，值为物品的详细信息。
+        """
+        multiple_data = self.data.get('multiple', {})  # 默认值是空字典
+
+        # 如果从 data 中获取的 multiple 数据是字符串，尝试解析它
+        if isinstance(multiple_data, str):
+            try:
+                multiple = json.loads(multiple_data)
+                if isinstance(multiple, dict):
+                    return multiple
+                else:
+                    logging.error(f"multiple 不是字典类型: {multiple_data}")
+                    return {}
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON解析错误: {e}，multiple内容: {multiple_data}")
+                return {}
+
+        # 如果 inventory_data 已经是字典，直接返回
+        elif isinstance(multiple_data, dict):
+            return multiple_data
+        else:
+            logging.error(f"获取的 multiple 不是字符串或字典类型: {type(multiple_data)}")
+            return {}
+
+    @multiple.setter
+    def multiple(self, value: dict):
+        """
+        设置库存信息，接受一个字典类型的参数。
+        字典的键应为加成的类型，值为加成的说明。
+        """
+        if not isinstance(value, dict):
+            logging.error(f"设置 multiple 时出错: 期望字典类型，但收到 {type(value)}")
+            return  # 不更新该值
+
+        # 验证每个物品的结构
+        for name, item in value.items():
+            if not isinstance(item, dict):
+                logging.error(f"物品 '{name}' 的值不是字典类型: {item}，不更新该值！")
+                return  # 不更新该值
+
+        # 尝试序列化为 JSON 字符串并更新
+        try:
+            self.data['multiple'] = json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            logging.error(f"设置 multiple 时出错: {e}，不更新该值")
 
     @property
     def equipped_weapon(self) -> str:
@@ -478,6 +530,7 @@ class Player:
             'equipment_weapon': '',
             'equipment_armor': '',
             'equipment_fishing_rod': '',
+            'multiple': '{}',
             'challenge_proposal': '',
             'is_pay_rent': 0,
             'position': 0
@@ -485,9 +538,10 @@ class Player:
         return cls(data)
 
     def get_inventory_display(self, content: str) -> str:
-        """获取格式化的背包显示，支持分页"""
+        """获取格式化的背包显示，支持分页，确保分类标题跨页连续"""
+
         if not self.inventory:
-            return "背包是空的"
+            return "🍃 背包是空的"
 
         # 从 content 中提取页码
         try:
@@ -497,105 +551,101 @@ class Player:
             page_num = 1
 
         # 按类型分类物品
-        weapons = []
-        armors = []
-        consumables = []
-        fish = []
-        fishing_rods = []
-        others = []
+        categorized_items = {
+            "⚔️ 武器:": [],
+            "🛡️ 防具:": [],
+            "🎣 鱼竿:": [],
+            "🎁 消耗品:": [],
+            "📈 加成道具:": [],
+            "🌌 特殊物品:": [],
+            "🐟 鱼类:": [],
+            "📦 其他物品:": [],
+        }
 
-        # 遍历背包物品
         for item_name in self.inventory:
             item = self.inventory.get(item_name, {})
-            item_type = item.get('type', '')
-            item_amount = item.get('amount', 0)
-            item_rarity = item.get('rarity', 0)
-            item_level = item.get('level', 0)
-            item_description = item.get('description', {}) if item_type == 'fishing_rod' else None
+            item_type = item.get("type", "")
+            item_amount = item.get("amount", 0)
+            item_rarity = item.get("rarity", 0)
+            item_level = item.get("level", 0)
+            item_description = item.get("description", {}) if item_type == "fishing_rod" else None
 
-            # 稀有度描述
-            rarity_str = f"{constants.RARITY_EMOJIS[item_rarity]}" if item_type in ['weapon', 'armor'] else ""
-
-            # 等级描述
+            rarity_str = f"{constants.RARITY_EMOJIS[item_rarity]}" if item_type in ["weapon", "armor"] else ""
             item_level_str = f"[Lv.{item_level}]" if item_level > 0 else ""
-
-            # 鱼竿耐久度描述
             item_durability_str = f"[耐久度: {item_description['durability']}]" if item_description else ""
 
-            # 物品格式化字符串
             item_str = f"{item_name}{item_level_str}{rarity_str}{item_durability_str} x{item_amount}"
 
-            # 分类
-            if item_type == 'weapon':
-                weapons.append(item_str)
-            elif item_type == 'armor':
-                armors.append(item_str)
-            elif item_type == 'consumable':
-                consumables.append(item_str)
-            elif item_type == 'fishing_rod':
-                fishing_rods.append(item_str)
-            elif item_type == 'fish':
-                fish.append(item_str)
+            if item_type == "weapon":
+                categorized_items["⚔️ 武器:"].append(item_str)
+            elif item_type == "armor":
+                categorized_items["🛡️ 防具:"].append(item_str)
+            elif item_type == "fishing_rod":
+                categorized_items["🎣 鱼竿:"].append(item_str)
+            elif item_type == "consumable":
+                categorized_items["🎁 消耗品:"].append(item_str)
+            elif item_type in ["boor_potion", "coward_potion", "double_exp_card", "double_gold_card"]:
+                categorized_items["📈 加成道具:"].append(item_str)
+            elif item_type in ["name_change_card"]:
+                categorized_items["🌌 特殊物品:"].append(item_str)
+            elif item_type == "fish":
+                categorized_items["🐟 鱼类:"].append(item_str)
             else:
-                others.append(item_str)
+                categorized_items["📦 其他物品:"].append(item_str)
 
-        # 合并所有分类为一个完整的列表
+        # 展平分类，同时保留标题与内容
         all_items = []
+        for category, items in categorized_items.items():
+            if items:
+                all_items.append((category, items))
 
-        if weapons:
-            all_items.append("⚔️ 武器:")
-            all_items.extend(f" └─{w}" for w in weapons)
-            all_items.append("")
-
-        if armors:
-            all_items.append("🛡️ 防具:")
-            all_items.extend(f" └─{a}" for a in armors)
-            all_items.append("")
-
-        if fishing_rods:
-            all_items.append("🎣 鱼竿:")
-            all_items.extend(f" └─{r}" for r in fishing_rods)
-            all_items.append("")
-
-        if consumables:
-            all_items.append("🎁 消耗品:")
-            all_items.extend(f" └─{c}" for c in consumables)
-            all_items.append("")
-
-        if fish:
-            all_items.append("🐟 鱼类:")
-            all_items.extend(f" └─{f}" for f in fish)
-            all_items.append("")
-
-        if others:
-            all_items.append("📦 其他物品:")
-            all_items.extend(f" └─{o}" for o in others)
-
-        # 分页逻辑：每页 15 条数据
+        # 分页逻辑
         items_per_page = 15
-        total_items = len(all_items)
-        total_pages = (total_items + items_per_page - 1) // items_per_page
+        paged_items = []
+        current_page_items = []
+        current_item_count = 0
 
-        # 页码边界处理
+        for category, items in all_items:
+            # 如果当前页已经满了，保存并开启下一页
+            if current_item_count + len(items) + 1 > items_per_page:
+                if current_page_items:
+                    paged_items.append(current_page_items)
+                    current_page_items = []
+                    current_item_count = 0
+
+            # 如果当前页已有内容但放不下所有物品，继续拆分
+            if current_item_count + len(items) + 1 > items_per_page:
+                current_page_items.append(category)
+                for item in items:
+                    if current_item_count + 1 > items_per_page:
+                        paged_items.append(current_page_items)
+                        current_page_items = [category]
+                        current_item_count = 0
+                    current_page_items.append(f" └─ {item}")
+                    current_item_count += 1
+            else:
+                # 正常加入当前页
+                current_page_items.append(category)
+                for item in items:
+                    current_page_items.append(f" └─ {item}")
+                    current_item_count += 1
+
+        # 添加最后一页
+        if current_page_items:
+            paged_items.append(current_page_items)
+
+        # 页码处理
+        total_pages = len(paged_items)
         if page_num < 1 or page_num > total_pages:
             return f"⚠️ 页码无效，请输入正确的页码 (1 - {total_pages})"
 
-        # 获取当前页的数据范围
-        start_index = (page_num - 1) * items_per_page
-        end_index = min(start_index + items_per_page, total_items)
-
-        # 构造当前页显示内容
+        # 构造结果
         result = [f"🎒 背包物品 - 第 {page_num}/{total_pages} 页"]
-        result.extend(all_items[start_index:end_index])
+        result.extend(paged_items[page_num - 1])
 
         if total_pages > 1:
-            # 分页导航提示
-            result.append("\n──────────────")
+            result.append("──────────────")
             result.append(f"💡 发送 背包 [页码] 查看指定页")
-
-        # 删除末尾空行
-        if result[-1] == "":
-            result.pop()
 
         return "\n".join(result)
 
@@ -693,6 +743,17 @@ class Player:
         player_attack = self.attack
         player_defense = self.defense
 
+        # 检查玩家当前加成情况
+        attack_multiple = 1
+        defense_multiple = 1
+        max_hp_multiple = 1
+        attack_multiple_str = ""
+        defense_multiple_str = ""
+        max_hp_multiple_str = ""
+        exp_multiple_str = ""
+        gold_multiple_str = ""
+        multiple = self.multiple
+
         # 获取装备加成
         equipped_weapon = self.game.rouge_equipment_system.get_equipment_by_id(self.equipment_weapon)
         equipped_armor = self.game.rouge_equipment_system.get_equipment_by_id(self.equipment_armor)
@@ -780,8 +841,17 @@ class Player:
             player_exp = self.get_exp_for_next_level(constants.PLAYER_MAX_LEVEL)
             needs_update = True
 
+        # 获取玩家加成
+        if multiple:
+            # 计算加成
+            attack_multiple, attack_multiple_str = get_multiple('attack', multiple)
+            defense_multiple, defense_multiple_str = get_multiple('defense', multiple)
+            max_hp_multiple, max_hp_multiple_str = get_multiple('max_hp', multiple)
+            exp_multiple_str = get_multiple('exp', multiple)[1]
+            gold_multiple_str = get_multiple('gold', multiple)[1]
+
         # 理论血量上限
-        theory_max_hp = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus)
+        theory_max_hp = int(((player_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * max_hp_multiple)
         # 检查玩家血量上限是否符合预期
         if player_max_hp != theory_max_hp:
             # 血量上限异常，需要修正
@@ -792,7 +862,7 @@ class Player:
             needs_update = True
 
         # 理论攻击力
-        theory_attack = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus)
+        theory_attack = int(((player_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * attack_multiple)
         # 检查玩家攻击力是否符合预期
         if player_attack != theory_attack:
             # 攻击力异常，需要修正
@@ -800,7 +870,7 @@ class Player:
             needs_update = True
 
         # 理论防御力
-        theory_defense = int((player_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus)
+        theory_defense = int(((player_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus) * defense_multiple)
         # 检查玩家防御力是否符合预期
         if player_defense != theory_defense:
             # 防御力异常，需要修正
@@ -820,7 +890,7 @@ class Player:
             f"🏷️ 玩家: {self.nickname}",
             f"💳 余额: {self.gold}",
             f"📈 等级: {player_level}",
-            f"✨ 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
+            f"📚 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
             f"❤️ 生命: {player_hp}/{player_max_hp}",
             f"⚔️ 攻击力: {player_attack}",
             f"🛡️ 防御力: {player_defense}",
@@ -847,5 +917,30 @@ class Player:
             fishing_rod_name = fishing_rod.get('name', '未知鱼竿')
             fishing_rod_description = fishing_rod.get("description", {})
             status.append(f"🎣 装备鱼竿: {fishing_rod_name} [耐久度: {fishing_rod_description['durability']}]")
+
+        # 构建非空加成的列表
+        additions = [
+            f"📊 加成: {attack_multiple_str}" if attack_multiple_str else "",
+            defense_multiple_str if defense_multiple_str else "",
+            max_hp_multiple_str if max_hp_multiple_str else "",
+            gold_multiple_str if gold_multiple_str else "",
+            exp_multiple_str if exp_multiple_str else "",
+        ]
+
+        # 过滤掉空字符串，并用 | 拼接
+        additions_str = "|".join(filter(lambda x: x != "", additions))
+
+        # 如果最终有内容才添加到 status
+        if additions_str:
+            status.append(additions_str)
+
+        if self.challenge_proposal:
+            # 如果玩家有挑战者，打印挑战者的信息
+            challenge = self.game.get_player(self.challenge_proposal)
+            if challenge:
+                status.append(f"🥊 挑战者: {challenge.nickname}[Lv.{challenge.level}]")
+            else:
+                # 如果找不到挑战者，打印错误信息
+                status.append(f"🥊 挑战者: 无效的挑战者ID[{self.challenge_proposal}]")
 
         return "\n".join(status)

@@ -11,6 +11,7 @@ from . import constants
 from plugins import *
 from .shop import Shop
 from .player import Player
+from .utils import get_multiple
 from datetime import datetime, time as datetime_time
 from typing import Optional, Dict, Any
 from common.log import logger
@@ -120,6 +121,7 @@ class Game(Plugin):
             equipment_weapon TEXT,
             equipment_armor TEXT,
             equipment_fishing_rod TEXT,
+            multiple TEXT,
             challenge_proposal TEXT,
             is_pay_rent INTEGER,
             position INTEGER
@@ -187,6 +189,7 @@ class Game(Plugin):
             'equipment_weapon',
             'equipment_armor',
             'equipment_fishing_rod',
+            'multiple',
             'challenge_proposal',
             'is_pay_rent',
             'position'
@@ -387,6 +390,7 @@ class Game(Plugin):
         cmd_handlers = {
             "注册": lambda id: self.register_player(id, content),
             "注销": lambda id: self.unregister_player(id),
+            "改名": lambda id: self.change_nickname(id, content),
             "状态": lambda id: self.get_player_status(id, False),
             "详细状态": lambda id: self.get_player_status(id, True),
             "签到": lambda id: self.daily_checkin(id),
@@ -395,6 +399,7 @@ class Game(Plugin):
             "背包": lambda id: self.show_inventory(id, content),
             "装备": lambda id: self.equip_from_inventory(id, content),
             "游戏菜单": lambda id: self.game_help(),
+            "菜单": lambda id: self.game_help(),
             "赠送": lambda id: self.give_item(id, content, msg),
             "钓鱼": lambda id: self.fishing(id),
             "图鉴": lambda id: self.show_fish_collection(id, content),
@@ -415,10 +420,14 @@ class Game(Plugin):
             "关机": lambda id: self.toggle_game_system(id, 'stop'),
             "充值": lambda id: self.toggle_recharge(id, content),
             "购买地块": lambda id: self.buy_property(id),
+            "购买地产": lambda id: self.buy_property(id),
             "升级地块": lambda id: self.upgrade_property(id),
+            "升级地产": lambda id: self.upgrade_property(id),
+            "我的地块": lambda id: self.show_properties(id, content),
             "我的地产": lambda id: self.show_properties(id, content),
             "收购": lambda id: self.acquisition_of_property(id),
             "支付租金": lambda id: self.pay_the_rent(id),
+            "支付房租": lambda id: self.pay_the_rent(id),
             "地图": lambda id: self.show_map(id, content),
         }
 
@@ -456,8 +465,10 @@ class Game(Plugin):
 
 基础指令
 ————————————
+📋 菜单/游戏菜单 - 查看游戏菜单
 📝 注册 [用户名] - 注册新玩家
 🚪 注销 - 注销你的账号
+✏️ 改名 [用户名] - 修改你的用户名
 📊 状态 - 查看当前状态
 📊 详细状态 - 查看当前详细状态
 📅 签到 - 抽取你的幸运签
@@ -535,7 +546,7 @@ class Game(Plugin):
         try:
             # 如果没有提供昵称，使用user_id作为默认昵称
             if not nickname:
-                return f"❌ 请提供一个有效昵称！\n\n格式: 注册 [昵称]"
+                return f"❌ 请提供一个有效昵称！\n\n💡 格式: 注册 [昵称]"
 
             # 检查昵称是否已被占用
             if self.nickname_exists(nickname):
@@ -597,6 +608,53 @@ class Game(Plugin):
         except Exception as e:
             logger.error(f"注销玩家出错: {e}")
             return "❌ 注销失败，请稍后再试"
+
+    def change_nickname(self, user_id, content):
+        """
+            更改玩家昵称
+            Args:
+                user_id: 玩家ID
+                content: 玩家输入的指令，将用于提取新昵称
+        """
+        if not user_id:
+            return "❌ 无法获取您的ID，请确保ID已设置"
+
+        property_name = '改名卡'
+
+        # 检查是否已注册
+        player = self.get_player(user_id)
+        if not player:
+            return "❌ 您还没注册,请先注册!"
+
+        nickname = self.regex_match("改名", content)
+        if not nickname:
+            return f"❌ 请提供一个有效的用户名！\n\n💡 格式: 改名 [用户名]"
+
+        inventory = player.inventory
+
+        if property_name not in inventory:
+            return "❌ 您的背包中没有改名卡，无法更改用户名！"
+        else:
+            # 获取改名卡
+            item = inventory[property_name]
+
+        # 检查昵称是否已被占用
+        if self.nickname_exists(nickname):
+            return f"❌ 用户名[{nickname}]已被占用，修改失败！"
+
+        # 更改昵称
+        try:
+            # 扣除改名卡
+            if item['amount'] == 1:
+                inventory.pop(property_name)
+            else:
+                item['amount'] -= 1
+
+            self._update_player_data(user_id, {'inventory': inventory, 'nickname': nickname})
+            return f"✅ 用户名已更改为 [{nickname}]"
+        except Exception as e:
+            logger.error(f"更改昵称出错: {e}")
+            return "❌ 更改昵称失败，请稍后再试"
 
     def get_player(self, user_id) -> Optional[Player]:
         """获取玩家数据"""
@@ -666,10 +724,20 @@ class Game(Plugin):
         new_max_exp = upgrade['max_exp']
         # 获取等级差
         level_difference = upgrade['level'] - player.level
+        # 检查玩家当前加成情况
+        attack_multiple = 1
+        defense_multiple = 1
+        max_hp_multiple = 1
+        multiple = player.multiple
+        if multiple:
+            # 计算加成
+            attack_multiple = get_multiple('attack', multiple)[0]
+            defense_multiple = get_multiple('defense', multiple)[0]
+            max_hp_multiple = get_multiple('max_hp', multiple)[0]
         # 计算新的三维
-        new_max_hp = player.max_hp + (constants.PLAYER_LEVEL_UP_APPEND_HP * level_difference)
-        new_attack = player.attack + (constants.PLAYER_LEVEL_UP_APPEND_ATTACK * level_difference)
-        new_defense = player.defense + (constants.PLAYER_LEVEL_UP_APPEND_DEFENSE * level_difference)
+        new_max_hp = int((player.max_hp + (constants.PLAYER_LEVEL_UP_APPEND_HP * level_difference)) * max_hp_multiple)
+        new_attack = int((player.attack + (constants.PLAYER_LEVEL_UP_APPEND_ATTACK * level_difference)) * attack_multiple)
+        new_defense = int((player.defense + (constants.PLAYER_LEVEL_UP_APPEND_DEFENSE * level_difference)) * defense_multiple)
         # 更新玩家数据
         updates['level'] = new_level
         updates['exp'] = new_exp
@@ -805,6 +873,11 @@ class Game(Plugin):
             inventory = updates_info['inventory']
         else:
             inventory = player.inventory
+        # 检查玩家当前加成情况
+        attack_multiple = 1
+        defense_multiple = 1
+        max_hp_multiple = 1
+        multiple = player.multiple
         player_get_gold = 0
         # 创建掉落物字典
         drop_item_explain = self.rouge_equipment_system.get_equipment_info(drop_equipment)
@@ -864,16 +937,24 @@ class Game(Plugin):
                     # 将掉落物装备
                     if drop_type == 'weapon':
                         updates_info['equipment_weapon'] = drop_dict['uuid']
+                        # 获取玩家加成
+                        if multiple:
+                            # 计算加成
+                            attack_multiple = get_multiple('attack', multiple)[0]
                         # 新的攻击力 = 武器加成 + 等级加成 + 玩家基本数值
-                        new_attack = drop_dict['attack_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK)
+                        new_attack = (drop_dict['attack_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK)) * attack_multiple
                         # 更新玩家数据
                         updates_info['attack'] = new_attack
                     elif drop_type == 'armor':
                         updates_info['equipment_armor'] = drop_dict['uuid']
+                        if multiple:
+                            # 计算加成
+                            defense_multiple = get_multiple('defense', multiple)[0]
+                            max_hp_multiple = get_multiple('max_hp', multiple)[0]
                         # 新的防御力 = 防具加成 + 等级加成 + 玩家基本数值
-                        new_defense = drop_dict['defense_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE)
+                        new_defense = (drop_dict['defense_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE)) * defense_multiple
                         # 新的最大生命值 = 防具加成 + 等级加成 + 玩家基本数值
-                        new_max_hp = drop_dict['max_hp_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP)
+                        new_max_hp = (drop_dict['max_hp_bonus'] + (player_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP)) * max_hp_multiple
                         # 更新玩家数据
                         updates_info['max_hp'] = new_max_hp
                         updates_info['defense'] = new_defense
@@ -892,6 +973,10 @@ class Game(Plugin):
         while (num > 0):
             consumable = random.choice(self.shop_system.shop_items)
             item_name = consumable['name']
+            item_type = consumable['type']
+            # 自动跳过非消耗品
+            if item_type not in ['consumable', 'boor_potion', 'coward_potion']:
+                continue
             # 获取背包
             if 'inventory' in updates_info:
                 inventory = updates_info['inventory']
@@ -972,13 +1057,21 @@ class Game(Plugin):
         # 经过起点的奖励结算
         if (current_position + steps) > self.monopoly.map_data["total_blocks"]:
             updates_info['gold'] = player.gold + constants.GO_OUT_START_POINT_REWARD
-            result.append(f"💰 经过起点获得 {constants.GO_OUT_START_POINT_REWARD} 金币")
+            result.append(f"💰 经过起点获得 {constants.GO_OUT_START_POINT_REWARD} 🪙")
 
         # 检查特殊事件
         if block['type'] == '机遇':
             event = self.monopoly.trigger_random_event()
             result.append(f"🤞 触发事件: {event['name']}")
             result.append(f"“{event['description']}”")
+            # 检查玩家当前加成情况
+            exp_multiple = 1
+            gold_multiple = 1
+            multiple = player.multiple
+            if multiple:
+                # 计算加成
+                exp_multiple = get_multiple('exp', multiple)[0]
+                gold_multiple = get_multiple('gold', multiple)[0]
             if 'effect' in event:
                 for key, value in event['effect'].items():
                     # 获取背包
@@ -988,14 +1081,18 @@ class Game(Plugin):
                         inventory = player.inventory
                     # 检查事件
                     if key == 'gold':
+                        if value > 0:
+                            gold_award = value * gold_multiple
+                        else:
+                            gold_award =value
                         # 金币变化
-                        new_gold = player.gold + value
+                        new_gold = player.gold + gold_award
                         if new_gold < 0:
                             new_gold = 0
                         updates_info['gold'] = new_gold
                         # 添加金币变化提示
                         if value > 0:
-                            result.append(f"💰 获得 {value} 金币")
+                            result.append(f"🪙 获得 {value} 金币")
                         else:
                             result.append(f"💸 失去 {abs(value)} 金币")
                     elif key == 'hp':
@@ -1015,10 +1112,10 @@ class Game(Plugin):
                             result.append(f"💔 血量减少 {abs(value)}")
                     elif key == 'exp':
                         # 添加经验变化提示
-                        if value > 0:
-                            result.append(f"✨ 经验增加 {value}")
+                        exp_award = value * exp_multiple
+                        result.append(f"📚 经验增加 {exp_award}")
                         # 根据获得经验判断玩家是否升级
-                        level_up_result = self.check_player_upgrade(player, value)
+                        level_up_result = self.check_player_upgrade(player, exp_award)
                         # 无论是否升级，都更新该值
                         updates_info['level'] = level_up_result['level']
                         if level_up_result['level'] > player.level:
@@ -1102,7 +1199,7 @@ class Game(Plugin):
                         result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                         result.append(f"🗺 区域类型: {block['region']}")
                         result.append(f"⚖️ 估值: {appraisement} 金币")
-                        result.append(f"💵 租金: {rent} 金币")
+                        result.append(f"💲 租金: {rent} 金币")
                         result.append(f"")
                         if player.gold >= rent:
                             # 扣除玩家金币
@@ -1163,27 +1260,8 @@ class Game(Plugin):
             'adventure_last_attack': str(current_time)
         })
 
-        string_array = {
-            "👹怪物巢穴": "阴暗的巢穴，怪物可能会突然袭击，小心埋伏。",
-            "🌳古树之心": "一棵巨大的古树，周围萦绕着神秘能量，可能存在强大生物。",
-            "🌫️迷雾谷地": "笼罩在浓雾中的森林低地，能见度极低，危险潜伏四周。",
-            "👻幽灵空地": "空无一人的开阔地，传说这里曾发生过一场激烈战斗，鬼魂仍在游荡。",
-            "🌳腐烂树林": "树木腐朽散发异味，小心脚下的陷阱和隐藏其中的怪物。",
-            "🦌灵兽栖息地": "灵气浓厚的区域，强大的灵兽在此守护着未知的宝藏。",
-            "🟢毒沼密林": "密林深处隐藏着毒雾沼泽，触碰毒气可能引发严重的危机。",
-            "🌙月光草原": "一片开阔的森林空地，在夜晚被月光照耀，敌人会利用闪避和潜行。",
-            "🏚️荒弃村落": "一个长期荒废的村庄，建筑坍塌，有危险生物潜伏其中。",
-            "🌳暗影森林": "阳光难以穿透的森林深处，到处充满暗影与未知生物的气息。",
-            "⛰️绝壁险峰": "陡峭的山峰，怪物可能从高处发动偷袭，注意脚下的危险。",
-            "🔥熔岩洞窟": "炽热的洞窟，周围充满熔岩流动的声音，强大的火焰生物潜伏其中。",
-            "🏜️流沙之地": "广袤的沙漠中隐藏着流沙陷阱，敌人可能突然从沙中出现。",
-            "☀烈日废墟": "沙漠深处的废墟，炽热的阳光让战斗变得更加艰难，怪物潜伏在阴影中。",
-            "🌪️沙暴迷城": "被沙暴掩埋的古老城市，能见度极低，敌人可能躲藏在废墟中。",
-            "❄️寒冰峡谷": "寒风呼啸的峡谷，冰雪覆盖的地面让战斗更加危险。",
-            "🧊冻土遗迹": "冰原深处的遗迹，寒冷让人难以忍受，敌人隐藏在冰雪之下。",
-            "🟢毒雾沼泽": "沼泽地中弥漫着毒雾，敌人可能隐藏在泥潭深处。",
-            "☠️枯骨之地": "沼泽深处堆满了枯骨，传说这里是强大怪物的狩猎场。"
-        }
+        # 获取地图信息
+        string_array = constants.ADVENTURE_MAP
 
         # 随机选择一个场景
         random_pos = random.choice(list(string_array))
@@ -1405,6 +1483,18 @@ class Game(Plugin):
         # 初始化升级标志
         level_up = False
 
+        # 检查玩家当前加成情况
+        exp_multiple = 1
+        gold_multiple = 1
+        multiple = player.multiple
+        try:
+            if multiple:
+                # 计算加成
+                exp_multiple = get_multiple('exp', multiple)[0]
+                gold_multiple = get_multiple('gold', multiple)[0]
+        except Exception as e:
+            logger.error(f"获取加成信息失败: {e}")
+
         # 玩家属性
         player_level = player.level
         player_hp = int(player.hp)
@@ -1529,8 +1619,8 @@ class Game(Plugin):
             exp_multiplier = 1 + (player.level * 0.04)
 
             # 结算经验/金币
-            award_exp = int(default_exp * exp_multiplier)
-            award_gold = int(min(player.level * 0.1, 1) * monster['gold'])
+            award_exp = int(default_exp * exp_multiplier * exp_multiple)
+            award_gold = int(min(player.level * 0.1, 1) * monster['gold'] * gold_multiple)
             actual_gain_gold = player.gold + award_gold
             updates_info['gold'] = actual_gain_gold
 
@@ -1586,8 +1676,8 @@ class Game(Plugin):
 
             # 战斗结算
             battle_log.append(f"\n🎉 战斗胜利")
-            battle_log.append(f"✨ 获得 {award_exp} 经验值")
-            battle_log.append(f"💰 获得 {award_gold} 金币")
+            battle_log.append(f"📚 获得 {award_exp} 经验值")
+            battle_log.append(f"🪙 获得 {award_gold} 金币")
 
             if drop_flag:
                 battle_log.append(f"\n战利品：")
@@ -1643,57 +1733,231 @@ class Game(Plugin):
         item_type = inventory.get(item_name, {}).get("type", "other")
 
         # 判断物品类型
-        if item_type != 'consumable':
+        if item_type not in ['consumable', 'boor_potion', 'coward_potion', 'double_exp_card', 'double_gold_card']:
             return f"🤷‍♂️ 物品 [{item_name}] 并非消耗品"
 
-        item_description = inventory.get(item_name, {}).get("description", {})
-
-        item_hp = item_description.get("hp", 0)
-
         result = []
+        updates_info = {}
+        real_item_count = 0
+        current_time = int(time.time())
+        # 检查玩家当前加成情况
+        multiple = player.multiple
 
         # 检查背包中是否有足够的物品
         item_count = inventory[item_name]["amount"]
         if item_count < amount:
-            result.append(f"🥤 背包中只有 {item_count} 个 {item_name}\n")
-            item_count = amount
+            result.append(f"🎒 背包中只有 {item_count} 个 {item_name}\n")
+            amount = item_count
 
-        if player.hp == player.max_hp:
-            return "🙅‍♂️ 您的生命值已满，无需回复。"
+        # 获取物品说明
+        item_description = inventory.get(item_name, {}).get("description", {})
 
-        # 计算恢复效果
-        current_hp = int(player.hp)
-        max_hp = int(player.max_hp)
-        lack_hp = max_hp - current_hp
-        heal_amount = item_hp * amount
-        if heal_amount > lack_hp:
-            # 可以回复的血量大于当前缺失的血量，需要计算最大消耗物品的数量
-            real_item_count = (lack_hp + item_hp - 1) // item_hp
-            # 计算新的生命值
-            new_hp = max_hp
-        else:
-            # 可以回复的血量小于当前缺失的血量，使用了amount个物品
+        if item_type == 'consumable':
+            # 检查hp状态
+            if player.hp == player.max_hp:
+                return "🙅‍♂️ 您的生命值已满，无需回复。"
+            # 获取hp回复量
+            item_hp = item_description.get("hp", 0)
+            # 计算恢复效果
+            current_hp = int(player.hp)
+            max_hp = int(player.max_hp)
+            lack_hp = max_hp - current_hp
+            heal_amount = item_hp * amount
+            if heal_amount > lack_hp:
+                # 可以回复的血量大于当前缺失的血量，需要计算最大消耗物品的数量
+                real_item_count = (lack_hp + item_hp - 1) // item_hp
+                # 计算新的生命值
+                new_hp = max_hp
+            else:
+                # 可以回复的血量小于当前缺失的血量，使用了amount个物品
+                real_item_count = amount
+                # 计算新的生命值
+                new_hp = min(current_hp + heal_amount, max_hp)
+            updates_info['hp'] = new_hp
+        elif item_type == 'boor_potion':
+            # 设置真实使用数量
             real_item_count = amount
-            # 计算新的生命值
-            new_hp = min(current_hp + heal_amount, max_hp)
+            attack_multiple_time = 0
+            attack_multiple_value = 0
+            attack_multiple = {}
+            if 'attack' in multiple:
+                # 已有攻击加成，叠加时间
+                if multiple['attack']['time'] > current_time:
+                    multiple['attack']['time'] += (item_description['time'] * real_item_count)
+                else:
+                    multiple['attack']['time'] = (current_time  + item_description['time'] * real_item_count)
+                multiple['attack']['value'] = item_description['attack_multiple']
+                # 获取实际加成数据
+                attack_multiple_time = multiple['attack']['time']
+                attack_multiple_value = multiple['attack']['value']
+            else:
+                # 无攻击加成，添加攻击加成
+                attack_multiple_time = (current_time  + item_description['time'] * real_item_count)
+                attack_multiple_value = item_description['attack_multiple']
+                attack_multiple = {
+                    'time': attack_multiple_time,
+                    'value': attack_multiple_value
+                }
+                multiple['attack'] = attack_multiple
+        elif item_type == 'coward_potion':
+            # 设置真实使用数量
+            real_item_count = amount
+            defense_multiple_time = 0
+            defense_multiple_value = 0
+            max_hp_multiple_time = 0
+            max_hp_multiple_value = 0
+            defense_multiple = {}
+            max_hp_multiple = {}
+            if 'defense' in multiple:
+                # 已有攻击加成，叠加时间
+                if multiple['defense']['time'] > current_time:
+                    multiple['defense']['time'] += (item_description['time'] * real_item_count)
+                else:
+                    multiple['defense']['time'] = (current_time  + item_description['time'] * real_item_count)
+                multiple['defense']['value'] = item_description['defense_multiple']
+                # 获取实际加成数据
+                defense_multiple_time = multiple['defense']['time']
+                defense_multiple_value = multiple['defense']['value']
+            else:
+                # 无攻击加成，添加攻击加成
+                defense_multiple_time = (current_time  + item_description['time'] * real_item_count)
+                defense_multiple_value = item_description['defense_multiple']
+                defense_multiple = {
+                    'time': defense_multiple_time,
+                    'value': defense_multiple_value
+                }
+                multiple['defense'] = defense_multiple
+            if 'max_hp' in multiple:
+                # 已有攻击加成，叠加时间
+                if multiple['max_hp']['time'] > current_time:
+                    multiple['max_hp']['time'] += (item_description['time'] * real_item_count)
+                else:
+                    multiple['max_hp']['time'] = (current_time  + item_description['time'] * real_item_count)
+                multiple['max_hp']['value'] = item_description['max_hp_multiple']
+                # 获取实际加成数据
+                max_hp_multiple_time = multiple['max_hp']['time']
+                max_hp_multiple_value = multiple['max_hp']['value']
+            else:
+                # 无攻击加成，添加攻击加成
+                max_hp_multiple_time = (current_time  + item_description['time'] * real_item_count)
+                max_hp_multiple_value = item_description['max_hp_multiple']
+                max_hp_multiple = {
+                    'time': max_hp_multiple_time,
+                    'value': max_hp_multiple_value
+                }
+                multiple['max_hp'] = max_hp_multiple
+        elif item_type == 'double_gold_card':
+            # 设置真实使用数量
+            real_item_count = amount
+            gold_multiple_time = 0
+            gold_multiple_value = 0
+            gold_multiple = {}
+            if 'gold' in multiple:
+                # 已有攻击加成，叠加时间
+                if multiple['gold']['time'] > current_time:
+                    multiple['gold']['time'] += (item_description['time'] * real_item_count)
+                else:
+                    multiple['gold']['time'] = (current_time  + item_description['time'] * real_item_count)
+                multiple['gold']['value'] = 1
+                # 获取实际加成数据
+                gold_multiple_time = multiple['gold']['time']
+                gold_multiple_value = 1
+            else:
+                # 无攻击加成，添加攻击加成
+                gold_multiple_time = (current_time  + item_description['time'] * real_item_count)
+                gold_multiple_value = 1
+                gold_multiple = {
+                    'time': gold_multiple_time,
+                    'value': gold_multiple_value
+                }
+                multiple['gold'] = gold_multiple
+        elif item_type == 'double_exp_card':
+            # 设置真实使用数量
+            real_item_count = amount
+            # 检查玩家当前加成情况
+            multiple = player.multiple
+            exp_multiple_time = 0
+            exp_multiple_value = 0
+            exp_multiple = {}
+            if 'exp' in multiple:
+                # 已有攻击加成，叠加时间
+                if multiple['exp']['time'] > current_time:
+                    multiple['exp']['time'] += (item_description['time'] * real_item_count)
+                else:
+                    multiple['exp']['time'] = (current_time  + item_description['time'] * real_item_count)
+                multiple['exp']['value'] = 1
+                # 获取实际加成数据
+                exp_multiple_time = multiple['exp']['time']
+                exp_multiple_value = 1
+            else:
+                # 无攻击加成，添加攻击加成
+                exp_multiple_time = (current_time  + item_description['time'] * real_item_count)
+                exp_multiple_value = 1
+                exp_multiple = {
+                    'time': exp_multiple_time,
+                    'value': exp_multiple_value
+                }
+                multiple['exp'] = exp_multiple
+        else:
+            return f"🤷‍♂️ 物品 [{item_name}] 无法使用"
+
+        # 更新加成字典
+        updates_info['multiple'] = multiple
 
         # 从背包中移除物品
-        if item_count == real_item_count:
+        if real_item_count == item_count:
             del inventory[item_name]
         else:
             inventory[item_name]["amount"] -= real_item_count
 
+        updates_info['inventory'] = inventory
+
+        result.append(f"🔄 使用 {real_item_count} 个 {item_name}\n")
+
+        if item_type == 'consumable':
+            result.append(f"💕 恢复 {new_hp - current_hp} 点生命值！")
+            result.append(f"❤️ 当前生命值: {new_hp}/{max_hp}")
+        elif item_type == 'boor_potion':
+            result.append(f"⚔️ 攻击加成: {attack_multiple_value:.0%}")
+            result.append(f"⏱️ 剩余时间: {int((attack_multiple_time - current_time)/60)} 分钟")
+            # 获取装备攻击加成
+            equipped_weapon = self.rouge_equipment_system.get_equipment_by_id(player.equipment_weapon)
+            if equipped_weapon:
+                attack_bonus = equipped_weapon.get('attack_bonus', 0)
+            else:
+                attack_bonus = 0
+            # 计算新的攻击力
+            new_attack = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * (1 + attack_multiple_value))
+            updates_info['attack'] = new_attack
+            result.append(f"⚔️ 当前攻击力: {new_attack}")
+        elif item_type == 'coward_potion':
+            result.append(f"🔗 防御加成: {defense_multiple_value:.0%}")
+            result.append(f"💖 最大生命加成: {max_hp_multiple_value:.0%}")
+            result.append(f"⏱️ 剩余时间: {int((defense_multiple_time - current_time)/60)} 分钟")
+            # 获取装备防御/生命加成
+            equipped_armor = self.rouge_equipment_system.get_equipment_by_id(player.equipment_armor)
+            if equipped_armor:
+                defense_bonus = equipped_armor.get('defense_bonus', 0)
+                max_hp_bonus = equipped_armor.get('max_hp_bonus', 0)
+            else:
+                defense_bonus = 0
+                max_hp_bonus = 0
+            # 计算新的防御/生命
+            new_defense = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus) * (1 + defense_multiple_value))
+            new_max_hp = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * (1 + max_hp_multiple_value))
+            updates_info['defense'] = new_defense
+            updates_info['max_hp'] = new_max_hp
+            result.append(f"🛡️ 当前防御力: {new_defense}")
+            result.append(f"❤️ 当前最大生命值: {new_max_hp}")
+        elif item_type == 'double_gold_card':
+            result.append(f"🪙 金币加成: {gold_multiple_value:.0%}")
+            result.append(f"⏱️ 剩余时间: {int((gold_multiple_time - current_time)/60)} 分钟")
+        elif item_type == 'double_exp_card':
+            result.append(f"📚 经验加成: {exp_multiple_value:.0%}")
+            result.append(f"⏱️ 剩余时间: {int((exp_multiple_time - current_time)/60)} 分钟")
+
         # 更新玩家数据
-        updates = {
-            'inventory': inventory,
-            'hp': new_hp
-        }
-
-        self._update_player_data(user_id, updates)
-
-        result.append(f"🧉 使用 {real_item_count} 个 {item_name}")
-        result.append(f"💕 恢复 {new_hp - current_hp} 点生命值！")
-        result.append(f"\n❤️ 当前生命值: {new_hp}/{max_hp}")
+        self._update_player_data(user_id, updates_info)
 
         return "\n".join(result)
 
@@ -1750,8 +2014,17 @@ class Game(Plugin):
             # 计算奖励
             base_reward = constants.SIGN_IN_GOLD_BONUS
             base_exp_reward = constants.SIGN_IN_EXP_BONUS
-            reward = int(base_reward * (1 + bonus_multiplier))
-            exp_reward = int(base_exp_reward * (1 + bonus_multiplier) * player.level)
+
+            # 检查玩家当前加成情况
+            exp_multiple = 1
+            gold_multiple = 1
+            multiple = player.multiple
+            if multiple:
+                # 计算加成
+                exp_multiple = get_multiple('exp', multiple)[0]
+                gold_multiple = get_multiple('gold', multiple)[0]
+            reward = int(base_reward * (1 + bonus_multiplier) * gold_multiple)
+            exp_reward = int(base_exp_reward * (1 + bonus_multiplier) * player.level * exp_multiple)
 
             logger.info(f"用户 {user_id} 签到奖励: {reward}金币, {exp_reward}经验, 状态: {fortune}")
             # 根据获得经验判断玩家是否升级
@@ -1771,8 +2044,8 @@ class Game(Plugin):
 
             report_log.append(f"🎉 签到成功！")
             report_log.append(f"🍀 今日运势：{fortune}")
-            report_log.append(f"💰 金币奖励：{reward}")
-            report_log.append(f"📈 经验奖励：{exp_reward}")
+            report_log.append(f"🪙 金币奖励：{reward}")
+            report_log.append(f"📚 经验奖励：{exp_reward}")
             if len(level_up_str) > 0:
                 # 玩家升级
                 report_log.append(f"\n {level_up_str}")
@@ -2135,7 +2408,7 @@ class Game(Plugin):
         # 解析命令内容
         parts = content.split()  # 分割命令为部分
         if len(parts) < 2:  # 确保至少包含命令和用户名
-            return "❌ 请使用正确的格式：攻击 用户名"
+            return "❌ 请使用正确的格式：挑战 [用户名]"
 
         target_name = parts[1]  # 提取用户名
         # 根据昵称获取玩家
@@ -2167,7 +2440,7 @@ class Game(Plugin):
             'challenge_proposal': user_id
         })
 
-        return f"💪 您向 {target_name} 发起了挑战请求，等待对方回应。\n💡 被挑战的玩家可以发送 [接受挑战] 或 [拒绝挑战] 来决定是否开始PVP游戏。"
+        return f"💪 你向 [{target_name}] 发起了挑战请求，等待对方回应。\n\n💡 被挑战的玩家可以发送 [接受挑战] 或 [拒绝挑战] 来决定是否开始PVP游戏。"
 
     def refuse_challenge(self, user_id):
         """拒绝挑战"""
@@ -2193,7 +2466,7 @@ class Game(Plugin):
             'challenge_proposal': ''
         })
 
-        return f"🙅‍♂️ 您拒绝了 {proposal} 的挑战请求"
+        return f"🙅‍♂️ 您拒绝了 [{proposer.nickname}] 的挑战请求"
 
     def accept_challenge(self, user_id):
         """接受挑战"""
@@ -2243,13 +2516,22 @@ class Game(Plugin):
                 logger.error(f"inventory 字段类型不支持: {type(inventory_value)}")
                 return  # 不更新该值
 
+        # 如果 update_data 中有 multiple 字段，确保将其序列化
+        if 'multiple' in update_data:
+            multiple_value = update_data['multiple']
+            if isinstance(multiple_value, dict):
+                update_data['multiple'] = json.dumps(multiple_value, ensure_ascii=False)
+            elif not isinstance(multiple_value, str):
+                logger.error(f"multiple 字段类型不支持: {type(multiple_value)}")
+                return  # 不更新该值
+
         # 如果 update_data 中有 equipment_fishing_rod 字段，确保将其序列化
         if 'equipment_fishing_rod' in update_data:
-            inventory_value = update_data['equipment_fishing_rod']
-            if isinstance(inventory_value, dict):
-                update_data['equipment_fishing_rod'] = json.dumps(inventory_value, ensure_ascii=False)
-            elif not isinstance(inventory_value, str):
-                logger.error(f"equipment_fishing_rod 字段类型不支持: {type(inventory_value)}")
+            equipment_fishing_rod_value = update_data['equipment_fishing_rod']
+            if isinstance(equipment_fishing_rod_value, dict):
+                update_data['equipment_fishing_rod'] = json.dumps(equipment_fishing_rod_value, ensure_ascii=False)
+            elif not isinstance(equipment_fishing_rod_value, str):
+                logger.error(f"equipment_fishing_rod 字段类型不支持: {type(equipment_fishing_rod_value)}")
                 return  # 不更新该值
 
         # 构建 SET 子句及参数字典
@@ -2295,11 +2577,16 @@ class Game(Plugin):
                 return "❌ 装备格式错误！请使用: 装备 [物品名]"
 
             item_name = parts[1]
+            attribute_specification_str = ""
             item_level = 1
             updates_info = {}
             new_attack = 0
             new_defense = 0
             new_max_hp = 0
+            # 检查玩家当前加成情况
+            attack_multiple = 1
+            defense_multiple = 1
+            max_hp_multiple = 1
 
             # 获取player
             player = self.get_player(user_id)
@@ -2312,6 +2599,7 @@ class Game(Plugin):
             if item_name not in inventory:
                 return f"🤷‍♂️ 玩家 [{player.nickname}] 未持有物品 [{item_name}]！"
 
+            multiple = player.multiple
             # 获取装备UUID
             equipment_uuid = inventory[item_name]['uuid']
             # 定义已装备的道具
@@ -2357,8 +2645,13 @@ class Game(Plugin):
                     return f"🤷‍♂️ 玩家 [{player.nickname} Lv.{player.level}] 等级不足，无法穿戴装备 [{item_name} Lv.{item_level}] ！"
 
                 if equipment['type'] == 'weapon':
+                    # 获取玩家加成
+                    if multiple:
+                        # 计算加成
+                        attack_multiple = get_multiple('attack', multiple)[0]
                     # 新的攻击力 = 武器加成 + 等级加成 + 玩家基本数值
-                    new_attack = equipment['attack_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK)
+                    new_attack = int((equipment['attack_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK)) * attack_multiple)
+                    attribute_specification_str += f"\n⚔️ 当前攻击力: {new_attack}"
                     # 记录武器UUID
                     updates_info['equipment_weapon'] = equipment_uuid
                     # 从背包移除本次装备的武器
@@ -2367,10 +2660,16 @@ class Game(Plugin):
                     if player.equipment_weapon and (player.equipment_weapon != equipment_uuid):
                         is_equipped_prop = player.equipment_weapon
                 elif equipment['type'] == 'armor':
+                    if multiple:
+                        # 计算加成
+                        defense_multiple = get_multiple('defense', multiple)[0]
+                        max_hp_multiple = get_multiple('max_hp', multiple)[0]
                     # 新的防御力 = 防具加成 + 等级加成 + 玩家基本数值
-                    new_defense = equipment['defense_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE)
+                    new_defense = int((equipment['defense_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE)) * defense_multiple)
+                    attribute_specification_str += f"\n🛡️ 当前防御力: {new_defense}"
                     # 新的最大生命值 = 防具加成 + 等级加成 + 玩家基本数值
-                    new_max_hp = equipment['max_hp_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP)
+                    new_max_hp = int((equipment['max_hp_bonus'] + (player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP)) * max_hp_multiple)
+                    attribute_specification_str += f"\n❤️ 当前最大生命: {new_max_hp}"
                     # 记录防具UUID
                     updates_info['equipment_armor'] = equipment_uuid
                     # 从背包移除本次装备的防具
@@ -2414,7 +2713,7 @@ class Game(Plugin):
                 # 更新玩家数据
                 self._update_player_data(user_id, updates_info)
 
-                return f"🎉 玩家 [{player.nickname}] 装备 [{item_name}] 成功！{unload_explain}"
+                return f"🎉 玩家 [{player.nickname}] 装备 [{item_name}] 成功！{unload_explain}\n{attribute_specification_str}"
         except Exception as e:
             logger.error(f"装备物品出错: {e}")
             return "装备物品时发生错误"
@@ -2533,7 +2832,7 @@ class Game(Plugin):
         new_gold = player.gold - price
         if self.monopoly.buy_property(current_position, user_id, price):
             self._update_player_data(user_id, {'gold': new_gold})
-            return f"""🎉 成功购买地块！\n📍 位置: {block['name']}\n🏛️ 类型: {block['type']}\n💴 花费: {price} 金币"""
+            return f"""🎉 成功购买地块！\n📍 位置: {block['name']}\n🏛️ 类型: {block['type']}\n🪙 花费: {price} 金币"""
         else:
             return "😵 购买失败，请稍后再试"
 
@@ -2938,6 +3237,6 @@ class Game(Plugin):
         })
 
         payout = abs(payout)
-        result_str = f"──────────────\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n\n{'🤩 恭喜您赢得了' if win else '😢 很遗憾，您输了'} {payout} 金币\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n──────────────"
+        result_str = f"──────────────\n🎲点数: {dice_faces}\n\n💴下注: {amount}金币\n\n{'🤩 恭喜您赢得了' if win else '😢 很遗憾，您输了'} {payout}🪙\n\n(游戏娱乐，切勿当真，热爱生活，远离赌博)\n──────────────"
 
         return result_str

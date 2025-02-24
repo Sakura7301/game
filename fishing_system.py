@@ -1,9 +1,11 @@
 import csv
 import uuid
+import time
 import math
 import random
 import json
 import datetime
+from .utils import get_multiple
 from . import constants
 import os
 import sqlite3
@@ -49,12 +51,13 @@ class FishingSystem:
 
     def _initialize_database(self) -> None:
         """
-        创建鱼的数据表，如果它尚不存在。
+        创建鱼的数据表，并更新数据：当 constants.FISH_ITEMS 中的鱼条目多于数据库中的
+        条目时，会将新的鱼条目插入到数据库中。
         """
         # 处理数据，生成 uuid 并保留所需字段
         all_fish_items = [
             {
-                "uuid": str(uuid.uuid4()), # 生成唯一的 uuid
+                "uuid": str(uuid.uuid4()),  # 生成唯一的 uuid
                 "name": item[0],
                 "explain": item[1],
                 "type": "fish",
@@ -77,21 +80,22 @@ class FishingSystem:
                 )
                 ''')
 
-                # 检查表中是否已有数据
-                cursor = self.conn.execute('SELECT COUNT(*) FROM fish')
-                record_count = cursor.fetchone()[0]
+                # 查询数据库中已有的鱼条目（依据 name 字段判断是否存在）
+                cursor = self.conn.execute('SELECT name FROM fish')
+                existing_names = {row[0] for row in cursor.fetchall()}
 
-                # 只有表为空时才插入数据
-                if record_count == 0:
-                    # 插入数据
+                # 筛选出常量中存在而数据库中缺失的鱼条目
+                new_fish_items = [item for item in all_fish_items if item["name"] not in existing_names]
+
+                if new_fish_items:
                     self.conn.executemany('''
                     INSERT INTO fish (uuid, name, explain, type, price, rarity)
                     VALUES (:uuid, :name, :explain, :type, :price, :rarity)
-                    ''', all_fish_items)
-                    logger.debug("成功初始化鱼的数据表并插入数据。")
+                    ''', new_fish_items)
+                    logger.debug(f"成功添加 {len(new_fish_items)} 个新鱼条目到鱼的数据表。")
                 else:
-                    logger.debug("鱼的数据表已存在并包含数据，跳过插入操作。")
-            logger.debug("成功初始化鱼的数据表。")
+                    logger.debug("鱼的数据表已包含所有条目，不需要更新。")
+                logger.debug("成功初始化鱼的数据表。")
         except sqlite3.Error as e:
             logger.error(f"初始化鱼的数据表失败: {e}")
             raise
@@ -153,11 +157,20 @@ class FishingSystem:
             # 获取鱼的基本价值
             base_reward = int(caught_fish.get('price', 0))
 
+            # 检查玩家当前加成情况
+            exp_multiple = 1
+            gold_multiple = 1
+            multiple = player.multiple
+            if multiple:
+                # 计算加成
+                exp_multiple = get_multiple('exp', multiple)[0]
+                gold_multiple = get_multiple('gold', multiple)[0]
+
             # 计算金币奖励
-            coins_reward = int(base_reward * (gold_bonus + 0.1 * math.log2(player.level)))
+            coins_reward = int(base_reward * (gold_bonus + 0.1 * math.log2(player.level)) * gold_multiple)
 
             # 计算经验奖励
-            exp_reward = int(coins_reward * (exp_bonus + 0.01 * player.level))
+            exp_reward = int(coins_reward * (exp_bonus + 0.01 * player.level) * exp_multiple)
 
             # 生成钓鱼信息
             fishing_messages = [
@@ -174,9 +187,9 @@ class FishingSystem:
             message += f"🎣 你钓到了 {caught_fish['name']}\n"
             message += f"      \"{caught_fish['explain']}\"\n"
             message += f"📊 稀有度: {stars}\n"
-            message += f"💰 基础价值: {caught_fish.get('price', '0')}金币\n"
-            message += f"🪙 金币奖励: {coins_reward}金币\n"
-            message += f"📚 经验奖励: {exp_reward}经验\n"
+            message += f"💰 基础价值: {caught_fish.get('price', '0')}\n"
+            message += f"🪙 金币奖励: {coins_reward}\n"
+            message += f"📚 经验奖励: {exp_reward}\n"
             message += f"──────────────"
 
             return {
@@ -250,7 +263,7 @@ class FishingSystem:
             collection += f"   说明: {data['explain']}\n"
             collection += f"   收集数量: {count}\n"
             collection += f"   稀有度: {stars}\n"
-            collection += f"   价值: 💰{data['price']}金币\n"
+            collection += f"   价值: {data['price']}🪙\n"
             collection += "──────────────\n"
 
         if total_pages > 1:
