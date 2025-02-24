@@ -1918,7 +1918,7 @@ class Game(Plugin):
             result.append(f"💕 恢复 {new_hp - current_hp} 点生命值！")
             result.append(f"❤️ 当前生命值: {new_hp}/{max_hp}")
         elif item_type == 'boor_potion':
-            result.append(f"⚔️ 攻击加成: {attack_multiple_value:.0%}")
+            result.append(f"🏹 攻击加成: {attack_multiple_value:.0%}")
             result.append(f"⏱️ 剩余时间: {int((attack_multiple_time - current_time)/60)} 分钟")
             # 获取装备攻击加成
             equipped_weapon = self.rouge_equipment_system.get_equipment_by_id(player.equipment_weapon)
@@ -1929,7 +1929,7 @@ class Game(Plugin):
             # 计算新的攻击力
             new_attack = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * (1 + attack_multiple_value))
             updates_info['attack'] = new_attack
-            result.append(f"⚔️ 当前攻击力: {new_attack}")
+            result.append(f"\n⚔️ 当前攻击力: {new_attack}")
         elif item_type == 'coward_potion':
             result.append(f"🔗 防御加成: {defense_multiple_value:.0%}")
             result.append(f"💖 最大生命加成: {max_hp_multiple_value:.0%}")
@@ -1947,7 +1947,7 @@ class Game(Plugin):
             new_max_hp = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * (1 + max_hp_multiple_value))
             updates_info['defense'] = new_defense
             updates_info['max_hp'] = new_max_hp
-            result.append(f"🛡️ 当前防御力: {new_defense}")
+            result.append(f"\n🛡️ 当前防御力: {new_defense}")
             result.append(f"❤️ 当前最大生命值: {new_max_hp}")
         elif item_type == 'double_gold_card':
             result.append(f"🪙 金币加成: {gold_multiple_value:.0%}")
