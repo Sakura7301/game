@@ -796,7 +796,7 @@ class Player:
         else:
             weapon_str = "无"
 
-        # 获取护甲加成
+        # 获取防具加成
         if equipped_armor:
             # 获取装备等级
             item_level = equipped_armor.get('level', 1)
@@ -903,11 +903,11 @@ class Player:
 
         # 检查玩家是否装备武器
         if equipped_weapon:
-            status.append(f"🗡️ 装备武器: {weapon_str}")
+            status.append(f"🗡️ 武器: {weapon_str}")
 
         # 检查玩家是否装备防具
         if equipped_armor:
-            status.append(f"🎽 装备护甲: {armor_str}")
+            status.append(f"🎽 防具: {armor_str}")
 
         # 如果装备了鱼竿，显示鱼竿信息
         if equipped_fishing_rod:
@@ -916,22 +916,24 @@ class Player:
             fishing_rod = self.equipment_fishing_rod
             fishing_rod_name = fishing_rod.get('name', '未知鱼竿')
             fishing_rod_description = fishing_rod.get("description", {})
-            status.append(f"🎣 装备鱼竿: {fishing_rod_name} [耐久度: {fishing_rod_description['durability']}]")
+            status.append(f"🎣 鱼竿: {fishing_rod_name} [耐久度: {fishing_rod_description['durability']}]")
 
         # 构建非空加成的列表
-        additions = [
-            f"📊 加成: {attack_multiple_str}" if attack_multiple_str else "",
-            defense_multiple_str if defense_multiple_str else "",
-            max_hp_multiple_str if max_hp_multiple_str else "",
-            gold_multiple_str if gold_multiple_str else "",
-            exp_multiple_str if exp_multiple_str else "",
-        ]
+        additions_list = []
+        if attack_multiple_str:
+            additions_list.append(attack_multiple_str)
+        if defense_multiple_str:
+            additions_list.append(defense_multiple_str)
+        if max_hp_multiple_str:
+            additions_list.append(max_hp_multiple_str)
+        if gold_multiple_str:
+            additions_list.append(gold_multiple_str)
+        if exp_multiple_str:
+            additions_list.append(exp_multiple_str)
 
         # 过滤掉空字符串，并用 | 拼接
-        additions_str = "|".join(filter(lambda x: x != "", additions))
-
-        # 如果最终有内容才添加到 status
-        if additions_str:
+        if additions_list:
+            additions_str = "📊 加成: " + "|".join(additions_list)
             status.append(additions_str)
 
         if self.challenge_proposal:

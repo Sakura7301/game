@@ -1213,6 +1213,7 @@ class Game(Plugin):
                         appraisement = self.monopoly.calculate_price(rent, property_info['level'])
                         result.append(f"🕵️‍♂️ 这是 {owner_player.nickname} 的地盘")
                         result.append(f"🗺 区域类型: {block['region']}")
+                        result.append(f"📈 等级: {property_info['level']}")
                         result.append(f"⚖️ 估值: {appraisement} 金币")
                         result.append(f"💲 租金: {rent} 金币")
                         result.append(f"")
@@ -1236,10 +1237,12 @@ class Game(Plugin):
                 else:
                     result.append("这是你的地盘")
                     result.append(f"🗺 区域类型: {block['region']}")
+                    rent = self.monopoly.calculate_rent(new_position)
+                    appraisement = self.monopoly.calculate_price(rent, property_info['level'])
+                    result.append(f"📈 等级: {property_info['level']}")
+                    result.append(f"⚖️ 估值: {appraisement} 金币")
+                    result.append(f"💲 租金: {rent} 金币")
                     if property_info.get('level', 0) < 3:
-                        rent = self.monopoly.calculate_rent(new_position)
-                        result.append(f"🏘️ 等级: {property_info['level']}")
-                        result.append(f"💴 租金: {rent}")
                         result.append("\n💡 发送 [升级地块] 进行升级")
                     logger.debug(f"玩家 {user_id} 访问了自己的地盘，位置: {new_position}")
         else:

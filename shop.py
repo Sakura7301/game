@@ -432,7 +432,7 @@ class Shop:
         # 构建操作提示
         instructions_str = ""
         if item_type in ['weapon', 'armor']:
-            equip_type = '武器' if item_type == 'weapon' else '护甲'
+            equip_type = '武器' if item_type == 'weapon' else '防具'
             instructions_str = f"\n💡 发送 [装备 {item_name}] 来装备此{equip_type}"
         elif item_type == 'fishing_rod':
             instructions_str = f"\n💡 发送 [装备 {item_name}] 来使用此鱼竿"
