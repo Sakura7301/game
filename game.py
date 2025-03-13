@@ -548,6 +548,9 @@ class Game(Plugin):
             if not nickname:
                 return f"❌ 请提供一个有效昵称！\n\n💡 格式: 注册 [昵称]"
 
+            if len(nickname) > 20:
+                return f"❌ 昵称长度不合法！\n\n💡 昵称长度不能超过16"
+
             # 检查昵称是否已被占用
             if self.nickname_exists(nickname):
                 return f"❌ 昵称[{nickname}]已被占用，注册失败！"
