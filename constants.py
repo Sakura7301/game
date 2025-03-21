@@ -800,7 +800,52 @@ RANDOM_EVENTS = {
                 "gold": 500,
                 "exp": 20
             }
-        }
+        },
+        {  
+            "id": "mystery_box",  
+            "name": "神秘盒子",  
+            "description": "你打开了一个神秘盒子，里面装满了惊喜！",  
+            "effect": {  
+                "gold": 800,  
+                "exp": 150,  
+                "consumable": 3  
+            }  
+        },  
+        {  
+            "id": "lucky_coin",  
+            "name": "幸运硬币",  
+            "description": "你捡到了一枚幸运硬币，带来了好运！",  
+            "effect": {  
+                "gold": 200,  
+                "exp": 50  
+            }  
+        },  
+        {  
+            "id": "gift_from_stranger",  
+            "name": "陌生人的礼物",  
+            "description": "一个陌生人送给你一份礼物，你感到非常温暖！",  
+            "effect": {  
+                "gold": 400,  
+                "consumable": 2  
+            }  
+        },  
+        {  
+            "id": "found_potion",  
+            "name": "发现药水",  
+            "description": "你在探险中发现了一瓶神奇的药水，喝下后感觉精力充沛！",  
+            "effect": {  
+                "exp": 100,  
+                "hp": 150  
+            }  
+        },  
+        {  
+            "id": "windfall",  
+            "name": "意外之财",  
+            "description": "你意外获得了一笔财富，真是天上掉馅饼！",  
+            "effect": {  
+                "gold": 1200  
+            }  
+        } 
     ],
     "bad_events": [
         {
@@ -865,7 +910,7 @@ RANDOM_EVENTS = {
         {
             "id": "legal_fine",
             "name": "法律罚款",
-            "description": "你带着武器出席贵族舞会，违反了王国规定，你需要支付罚款。等待，误入白虎堂？",
+            "description": "你带着武器出席贵族舞会，违反了王国规定，你需要支付罚款。等等，误入白虎堂？",
             "effect": {
                 "gold": -800
             }
@@ -877,7 +922,33 @@ RANDOM_EVENTS = {
             "effect": {
                 "gold": -1000
             }
-        }
+        }, 
+        {  
+            "id": "cursed_item",  
+            "name": "诅咒物品",  
+            "description": "你捡到了一件被诅咒的物品，带来了厄运！",  
+            "effect": {  
+                "gold": -300,  
+                "hp": -50  
+            }  
+        },  
+        {  
+            "id": "failed_investment",  
+            "name": "投资失败",  
+            "description": "你的投资失败了，损失了不少资金！",  
+            "effect": {  
+                "gold": -1500  
+            }  
+        },  
+        {  
+            "id": "stolen_armor",  
+            "name": "乐极生悲",  
+            "description": "你在酒店里碰到了知己，喝大酒喝的忘乎所以，然后对方顺手带走了你的背包。",  
+            "effect": {  
+                "gold": -2000,
+                "lost_item": 5
+            }  
+        }  
     ]
 }
 
