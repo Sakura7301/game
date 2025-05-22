@@ -2857,7 +2857,7 @@ class TextGame(PluginBase):
                     self._update_player_data(target.user_id, updates_info)
                     return f"🏦 充值成功！\n\n👤 目标用户: {target.nickname}\n💰 金额: {amount} 金币。"
             else:
-                return "⚠️ 请使用正确的格式：充值 @用户名 金额"
+                return "⚠️ 请使用正确的格式：充值 用户名 金额"
         except Exception as e:
             logger.error(f"充值出错: {e}")
             return "⚠️ 充值失败，请联系管理员。"
