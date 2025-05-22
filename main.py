@@ -3,27 +3,26 @@ import re
 import time
 import json
 import random
-import plugins
 import tomllib
 import sqlite3
 import datetime
 import threading
 from . import constants
-from plugins import *
 from .shop import Shop
 from .player import Player
+from typing import Dict
 from .utils import get_multiple
+from loguru import logger
 from datetime import datetime, time as datetime_time
 from typing import Optional, Dict, Any
-from loguru import logger
 from .rouge_equipment import RougeEquipment
 from .monopoly import MonopolySystem
 from .fishing_system import FishingSystem
 from WechatAPI import WechatAPIClient
-from database.XYBotDB import XYBotDB
+from utils.plugin_base import PluginBase
+from WechatAPI import WechatAPIClient
 from utils.decorators import *
 from utils.plugin_base import PluginBase
-
 
 
 class TextGame(PluginBase):
@@ -31,6 +30,7 @@ class TextGame(PluginBase):
     author = "Sakura7301"
     version = "0.2.4"
     is_ai_platform = True  # 标记为 AI 平台插件
+
     def __init__(self):
         super().__init__()
         # 初始化锁
@@ -90,7 +90,9 @@ class TextGame(PluginBase):
         """
         if not hasattr(self, 'conn') or self.conn is None:
             try:
-                self.conn = sqlite3.connect(self.player_db_path, check_same_thread=False)
+                self.conn = sqlite3.connect(
+                    self.player_db_path, check_same_thread=False
+                )
                 self.conn.row_factory = sqlite3.Row
                 logger.debug("数据库连接已创建并保持打开状态。")
             except sqlite3.Error as e:
@@ -367,28 +369,41 @@ class TextGame(PluginBase):
             logger.error(f"查询玩家数据失败: {e}")
             raise
 
-    @on_text_message(priority=80)
-    async def handle_text_message(self, client: WechatAPIClient, message: Dict):
+    def game_system_handle(self, message: Dict):
         """处理@消息"""
         if not self.enable:
-            logger.debug("OpenAIAPI插件未启用")
-            return True  # 插件未启用，继续处理
+            logger.debug("TextGame插件未启用")
+            return None
 
         # 使用正确的消息属性名称
         content = message.get("Content", "")
         current_id = message.get("SenderWxid", "")
-        group_id = message.get("FromWxid", "")
         is_group = message.get("IsGroup", False)
 
         # 如果内容为空，不处理
         if not content:
             logger.debug("@消息内容为空，不处理")
-            return True
+            return None
+        
+        if is_group:
+            # 移除@部分
+            query = content
+            logger.debug(f"原始@消息内容: '{query}'")
+
+            # 处理特殊空格字符 \u2005（四分之一em空格）
+            # 这个特殊空格常出现在微信@消息中
+            if '\u2005' in query:
+                parts = query.split('\u2005', 1)
+                if len(parts) > 1:
+                    # 保留第二部分（@名称后面的内容）
+                    query = parts[1].strip()
+                    logger.debug(f"处理特殊空格后的内容: '{query}'")
+                    content = query
+                else:
+                    return ""
 
         if not self.game_status and content not in ['注册', '注销', '开机', '关机', '充值']:
-            await client.send_text_message(group_id, f"@{message.get('from_nick', '')} 游戏系统当前已关闭")
-            # 已处理消息，阻止后续处理
-            return False
+            return "游戏系统当前已关闭"
 
         logger.debug(f"当前用户信息 - current_id: {current_id}")
 
@@ -453,16 +468,44 @@ class TextGame(PluginBase):
                                 reply_str = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
                     else:
                         # 公测
-                        reply_str =  cmd_handlers[cmd](current_id)
-                    # 发送消息
-                    await client.send_text_message(group_id, f"@{message.get('from_nick', '')} {reply_str}")
-                    return False  # 已处理消息，阻止后续处理
+                        reply_str = cmd_handlers[cmd](current_id)
                 except Exception as e:
                     logger.error(f"处理指令 '{cmd}' 时出错: {e}")
-                    await client.send_text_message(group_id, f"@{message.get('from_nick', '')} ⚠️ 处理您的指令时发生错误，请稍后再试。")
-                    # 已处理消息，阻止后续处理
-                    return False
+                    reply_str = "⚠️ 处理您的指令时发生错误，请稍后再试。"
+        return reply_str
 
+
+    @on_text_message(priority=80)
+    async def handle_text_message(self, client: WechatAPIClient, message: Dict):
+        """处理私聊消息"""
+        reply_str = self.game_system_handle(message)
+        if reply_str is None:
+            # 如果回复为空，则不处理
+            return False
+        else:
+            await client.send_text_message(message.get("FromWxid", ""), f"@{message.get('from_nick', '')} {reply_str}")
+            # 已处理消息，阻止后续处理
+            return False
+
+    @on_at_message(priority=80)
+    async def handle_at_message(self, client: WechatAPIClient, message: Dict):
+        """处理@消息"""
+        group_id = message.get("FromWxid", "")
+        current_id = message.get("SenderWxid", "")
+        is_group = message.get("IsGroup", False)
+        if is_group:
+            reply_str = self.game_system_handle(message)
+            if reply_str is None:
+                # 如果回复为空，则不处理
+                return False
+            else:
+                await client.send_at_message(group_id, reply_str, [current_id])
+                # 已处理消息，阻止后续处理
+                return False
+        else :
+            # 私聊消息，直接转给handle_text_message处理
+            return await self.handle_text_message(client, message)
+        
     def game_help(self):
         return """
 🎮 游戏指令大全 🎮
@@ -573,10 +616,6 @@ class TextGame(PluginBase):
 
         :param user_id: 玩家唯一标识符
         """
-        # 确保 user_id 为字符串类型
-        if not isinstance(user_id, str):
-            logger.error(f"user_id 需要是字符串类型，但收到: {type(user_id)}")
-            return
 
         delete_query = """
         DELETE FROM players

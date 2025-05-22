@@ -1,12 +1,10 @@
 import os
 import re
-import csv
 import uuid
 import json
 import sqlite3
 from loguru import logger
 from . import constants
-from collections import Counter
 
 
 class Shop:
