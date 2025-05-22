@@ -18,7 +18,6 @@ from typing import Optional, Dict, Any
 from .rouge_equipment import RougeEquipment
 from .monopoly import MonopolySystem
 from .fishing_system import FishingSystem
-from WechatAPI import WechatAPIClient
 from utils.plugin_base import PluginBase
 from WechatAPI import WechatAPIClient
 from utils.decorators import *
@@ -48,6 +47,8 @@ class TextGame(PluginBase):
 
             # 读取插件开启状态
             self.enable = plugin_config.get("enable", True)
+
+            logger.info(f"TextGame插件开启状态: {self.enable}")
 
             # 检查data目录
             self.data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -370,8 +371,7 @@ class TextGame(PluginBase):
             raise
 
     def game_system_handle(self, message: Dict):
-        """处理@消息"""
-        if not self.enable:
+        if self.enable is False:
             logger.debug("TextGame插件未启用")
             return None
 
@@ -382,7 +382,7 @@ class TextGame(PluginBase):
 
         # 如果内容为空，不处理
         if not content:
-            logger.debug("@消息内容为空，不处理")
+            logger.debug("消息内容为空，不处理")
             return None
         
         if is_group:
@@ -400,7 +400,7 @@ class TextGame(PluginBase):
                     logger.debug(f"处理特殊空格后的内容: '{query}'")
                     content = query
                 else:
-                    return ""
+                    return None
 
         if not self.game_status and content not in ['注册', '注销', '开机', '关机', '充值']:
             return "游戏系统当前已关闭"
@@ -472,18 +472,18 @@ class TextGame(PluginBase):
                 except Exception as e:
                     logger.error(f"处理指令 '{cmd}' 时出错: {e}")
                     reply_str = "⚠️ 处理您的指令时发生错误，请稍后再试。"
+            else :
+                return None
         return reply_str
 
 
     @on_text_message(priority=80)
     async def handle_text_message(self, client: WechatAPIClient, message: Dict):
         """处理私聊消息"""
+        current_id = message.get("SenderWxid", "")
         reply_str = self.game_system_handle(message)
-        if reply_str is None:
-            # 如果回复为空，则不处理
-            return False
-        else:
-            await client.send_text_message(message.get("FromWxid", ""), f"@{message.get('from_nick', '')} {reply_str}")
+        if reply_str is not None:
+            await client.send_text_message(current_id, reply_str)
             # 已处理消息，阻止后续处理
             return False
 
@@ -495,16 +495,13 @@ class TextGame(PluginBase):
         is_group = message.get("IsGroup", False)
         if is_group:
             reply_str = self.game_system_handle(message)
-            if reply_str is None:
-                # 如果回复为空，则不处理
-                return False
-            else:
-                await client.send_at_message(group_id, reply_str, [current_id])
+            if reply_str is not None:
+                await client.send_at_message(group_id, f"\n{reply_str}", [current_id])
                 # 已处理消息，阻止后续处理
                 return False
-        else :
+        else :  
             # 私聊消息，直接转给handle_text_message处理
-            return await self.handle_text_message(client, message)
+            await self.handle_text_message(client, message)
         
     def game_help(self):
         return """
@@ -795,10 +792,10 @@ class TextGame(PluginBase):
             defense_bonus = 0
             max_hp_bonus = 0
         # 计算新的攻击力
-        new_attack = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * attack_multiple)
+        new_attack = int(((new_level * constants.PLAYER_LEVEL_UP_APPEND_ATTACK + constants.PLAYER_BASE_ATTACK) + attack_bonus) * attack_multiple)
         # 计算新的防御/生命
-        new_defense = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus) * defense_multiple)
-        new_max_hp = int(((player.level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * max_hp_multiple)
+        new_defense = int(((new_level * constants.PLAYER_LEVEL_UP_APPEND_DEFENSE + constants.PLAYER_BASE_DEFENSE) + defense_bonus) * defense_multiple)
+        new_max_hp = int(((new_level * constants.PLAYER_LEVEL_UP_APPEND_HP + constants.PLAYER_BASE_MAX_HP) + max_hp_bonus) * max_hp_multiple)
         # 更新玩家数据
         updates['level'] = new_level
         updates['exp'] = new_exp
