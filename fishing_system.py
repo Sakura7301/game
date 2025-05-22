@@ -9,7 +9,7 @@ from .utils import get_multiple
 from . import constants
 import os
 import sqlite3
-from common.log import logger
+from loguru import logger
 from collections import Counter
 
 

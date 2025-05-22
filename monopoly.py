@@ -2,7 +2,7 @@ import os
 import json
 import random
 from . import constants
-from common.log import logger
+from loguru import logger
 from typing import Dict, List, Optional
 
 

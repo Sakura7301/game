@@ -4,6 +4,7 @@ import time
 import json
 import random
 import plugins
+import tomllib
 import sqlite3
 import datetime
 import threading
@@ -14,42 +15,47 @@ from .player import Player
 from .utils import get_multiple
 from datetime import datetime, time as datetime_time
 from typing import Optional, Dict, Any
-from common.log import logger
+from loguru import logger
 from .rouge_equipment import RougeEquipment
 from .monopoly import MonopolySystem
 from .fishing_system import FishingSystem
-from bridge.reply import Reply, ReplyType
-from channel.chat_message import ChatMessage
-from bridge.context import ContextType, Context
+from WechatAPI import WechatAPIClient
+from database.XYBotDB import XYBotDB
+from utils.decorators import *
+from utils.plugin_base import PluginBase
 
 
-@plugins.register(
-    name="Game",
-    desc="一个简单的文字游戏系统",
-    version="0.2.4",
-    author="assistant",
-    desire_priority=0
-)
-class Game(Plugin):
+
+class TextGame(PluginBase):
+    description = "文字游戏"
+    author = "Sakura7301"
+    version = "0.2.4"
+    is_ai_platform = True  # 标记为 AI 平台插件
     def __init__(self):
         super().__init__()
-        self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-        # 获取协议类型
-        self.channel_type = conf().get("channel_type")
         # 初始化锁
         self.lock = threading.Lock()
         # 使用线程本地存储
         self.local = threading.local()
         try:
+            # 读取插件配置
+            config_path = os.path.join(os.path.dirname(__file__), "config.toml")
+            with open(config_path, "rb") as f:
+                config = tomllib.load(f)
+
+            # 获取TEXT_GAME配置
+            plugin_config = config.get("TextGame", {})
+
+            # 读取插件开启状态
+            self.enable = plugin_config.get("enable", True)
+
             # 检查data目录
             self.data_dir = os.path.join(os.path.dirname(__file__), "data")
             os.makedirs(self.data_dir, exist_ok=True)
-            # 初始化配置
-            self.config = super().load_config()
             # 加载文件路径
             self.player_db_path = os.path.join(self.data_dir, "players.db")
             # 加载管理员密码
-            self.admin_password = self.config.get("admin_password")
+            self.admin_password = plugin_config.get("admin_password", "7301")
             # 初始化管理员列表
             self.admin_list = []
             # 游戏系统状态
@@ -75,6 +81,7 @@ class Game(Plugin):
             logger.info("[Game] 插件初始化完毕")
         except Exception as e:
             logger.error(f"初始化游戏系统出错: {e}")
+            self.enable = False
             raise
 
     def _get_connection(self) -> sqlite3.Connection:
@@ -150,12 +157,12 @@ class Game(Plugin):
             raise ValueError("必须指定至少一个字段名进行查询。")
 
         fields_str = ", ".join(fields)  # 动态拼接字段名
-        query = f"SELECT {fields_str} FROM players WHERE nickname = ?"
+        msg = f"SELECT {fields_str} FROM players WHERE nickname = ?"
 
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            cursor.execute(query, (name,))
+            cursor.execute(msg, (name,))
             result = cursor.fetchone()
             if result is None:
                 return None
@@ -248,13 +255,13 @@ class Game(Plugin):
         :param nickname: 玩家昵称
         :return: 如果存在返回 True，否则返回 False
         """
-        query = """
+        msg = """
         SELECT COUNT(*) FROM players WHERE nickname = :nickname
         """
         try:
             conn = self._get_connection()
             with conn:
-                cursor = conn.execute(query, {'nickname': nickname})
+                cursor = conn.execute(msg, {'nickname': nickname})
                 count = cursor.fetchone()[0]
                 return count > 0  # 如果 count 大于 0，表示存在该昵称
         except sqlite3.Error as e:
@@ -268,10 +275,10 @@ class Game(Plugin):
         :param user_id: 玩家唯一标识符
         :return: 包含玩家数据的字典，如果未找到则返回 None
         """
-        query = "SELECT * FROM players WHERE user_id = ?"
+        msg = "SELECT * FROM players WHERE user_id = ?"
         try:
             conn = self._get_connection()
-            cursor = conn.execute(query, (user_id,))
+            cursor = conn.execute(msg, (user_id,))
             row = cursor.fetchone()
             if row:
                 player_data = {key: row[key] for key in row.keys()}
@@ -300,11 +307,11 @@ class Game(Plugin):
 
         :return: 包含所有玩家数据的列表，如果未找到任何玩家则返回空列表
         """
-        query = "SELECT * FROM players"
+        msg = "SELECT * FROM players"
         players_data = []
         try:
             conn = self._get_connection()
-            cursor = conn.execute(query)
+            cursor = conn.execute(msg)
             rows = cursor.fetchall()  # 获取所有行
             for row in rows:
                 player_data = {key: row[key] for key in row.keys()}
@@ -334,10 +341,10 @@ class Game(Plugin):
         :param nickname: 玩家昵称
         :return: 包含玩家数据的字典，如果未找到则返回 None
         """
-        query = "SELECT * FROM players WHERE nickname = ?"
+        msg = "SELECT * FROM players WHERE nickname = ?"
         try:
             conn = self._get_connection()
-            cursor = conn.execute(query, (nickname,))
+            cursor = conn.execute(msg, (nickname,))
             row = cursor.fetchone()
             if row:
                 player_data = {key: row[key] for key in row.keys()}
@@ -360,29 +367,28 @@ class Game(Plugin):
             logger.error(f"查询玩家数据失败: {e}")
             raise
 
-    def on_handle_context(self, e_context: EventContext):
-        if e_context['context'].type != ContextType.TEXT:
-            return
+    @on_text_message(priority=80)
+    async def handle_text_message(self, client: WechatAPIClient, message: Dict):
+        """处理@消息"""
+        if not self.enable:
+            logger.debug("OpenAIAPI插件未启用")
+            return True  # 插件未启用，继续处理
 
-        content = e_context['context'].content.strip()
-        msg: ChatMessage = e_context['context']['msg']
+        # 使用正确的消息属性名称
+        content = message.get("Content", "")
+        current_id = message.get("SenderWxid", "")
+        group_id = message.get("FromWxid", "")
+        is_group = message.get("IsGroup", False)
 
-        # 获取用户ID作为主要标识符
-        current_id = msg.actual_user_id if msg.is_group else msg.from_user_id
-
-        if self.channel_type == "gewechat":
-            # gewe协议获取群名
-            nickname = msg.actual_user_nickname
-        else:
-            # 使用 sender 作为昵称
-            nickname = msg.actual_user_nickname if msg.is_group else msg.from_user_nickname
-
-        # 检查是否有用户ID
-        if not current_id:
-            return "无法获取您的ID，请确保ID已设置"
+        # 如果内容为空，不处理
+        if not content:
+            logger.debug("@消息内容为空，不处理")
+            return True
 
         if not self.game_status and content not in ['注册', '注销', '开机', '关机', '充值']:
-            return "游戏系统当前已关闭"
+            await client.send_text_message(group_id, f"@{message.get('from_nick', '')} 游戏系统当前已关闭")
+            # 已处理消息，阻止后续处理
+            return False
 
         logger.debug(f"当前用户信息 - current_id: {current_id}")
 
@@ -400,7 +406,7 @@ class Game(Plugin):
             "装备": lambda id: self.equip_from_inventory(id, content),
             "游戏菜单": lambda id: self.game_help(),
             "菜单": lambda id: self.game_help(),
-            "赠送": lambda id: self.give_item(id, content, msg),
+            "赠送": lambda id: self.give_item(id, content),
             "钓鱼": lambda id: self.fishing(id),
             "图鉴": lambda id: self.show_fish_collection(id, content),
             "出售": lambda id: self.shop_system.sell_item(id, content),
@@ -410,7 +416,7 @@ class Game(Plugin):
             "使用": lambda id: self.use_item(id, content),
             "排行": lambda id: self.show_leaderboard(id, content),
             "排行榜": lambda id: self.show_leaderboard(id, content),
-            "挑战": lambda id: self.attack_player(id, content, msg),
+            "挑战": lambda id: self.attack_player(id, content, is_group),
             "接受挑战": lambda id: self.accept_challenge(id),
             "拒绝挑战": lambda id: self.refuse_challenge(id),
             "鉴权": lambda id: self.authenticate("鉴权", id, content),
@@ -438,26 +444,24 @@ class Game(Plugin):
                     if constants.SYSTEM_MAINTENANCE:
                         # 仅在维护时支持的指令(认证)
                         if cmd in ["auth", "认证", "鉴权"]:
-                            reply = cmd_handlers[cmd](current_id)
-                            e_context['reply'] = Reply(ReplyType.TEXT, reply)
-                            e_context.action = EventAction.BREAK_PASS
+                            reply_str = cmd_handlers[cmd](current_id)
                         else:
                             if self.is_admin(current_id):
                                 # 系统维护期间仅管理员可使用
-                                reply = cmd_handlers[cmd](current_id)
+                                reply_str = cmd_handlers[cmd](current_id)
                             else:
-                                reply = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
+                                reply_str = f"🚧 内部维护中，暂不支持[{cmd}]功能!"
                     else:
                         # 公测
-                        reply = cmd_handlers[cmd](current_id)
-                    e_context['reply'] = Reply(ReplyType.TEXT, reply)
-                    e_context.action = EventAction.BREAK_PASS
+                        reply_str =  cmd_handlers[cmd](current_id)
+                    # 发送消息
+                    await client.send_text_message(group_id, f"@{message.get('from_nick', '')} {reply_str}")
+                    return False  # 已处理消息，阻止后续处理
                 except Exception as e:
                     logger.error(f"处理指令 '{cmd}' 时出错: {e}")
-                    e_context['reply'] = Reply(ReplyType.TEXT, "⚠️ 处理您的指令时发生错误，请稍后再试。")
-                    e_context.action = EventAction.BREAK_PASS
-            else:
-                e_context.action = EventAction.CONTINUE
+                    await client.send_text_message(group_id, f"@{message.get('from_nick', '')} ⚠️ 处理您的指令时发生错误，请稍后再试。")
+                    # 已处理消息，阻止后续处理
+                    return False
 
     def game_help(self):
         return """
@@ -2078,7 +2082,7 @@ class Game(Plugin):
             logger.error(f"用户 {user_id} 签到出错: {e}")
             return f"⚠️ 签到失败: {str(e)}"
 
-    def give_item(self, user_id, content, msg: ChatMessage):
+    def give_item(self, user_id, content):
         # 拆分命令参数
         parts = content.split()
         if len(parts) < 3:
@@ -2421,9 +2425,9 @@ class Game(Plugin):
         battle_log.append(result)
         return "\n".join(battle_log)
 
-    def attack_player(self, user_id, content, msg: ChatMessage):
+    def attack_player(self, user_id, content, is_group):
         """ PVP 挑战其他玩家 """
-        if not msg.is_group:
+        if not is_group:
             return "❌ 只能在群聊中使用攻击功能"
 
         # 解析命令内容

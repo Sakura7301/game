@@ -1,7 +1,7 @@
-from .game import Game
+from .main import TextGame
 from .player import Player
 from .fishing_system import FishingSystem
 from .shop import Shop
 from .monopoly import MonopolySystem
 from .rouge_equipment import RougeEquipment
-__all__ = ['Game', 'Player', 'FishingSystem', 'Shop', 'RougeEquipment', 'MonopolySystem']
+__all__ = ['TextGame', 'Player', 'FishingSystem', 'Shop', 'RougeEquipment', 'MonopolySystem']
