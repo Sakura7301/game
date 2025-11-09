@@ -3,7 +3,7 @@ import json
 import random
 from . import constants
 from loguru import logger
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 class MonopolySystem:

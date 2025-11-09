@@ -186,7 +186,7 @@ class RougeEquipment:
                 logger.info(f"成功获取装备， ID: {equipment_id}")
                 return equipment
             else:
-                logger.info(f"未找到装备， ID: {equipment_id}")
+                logger.debug(f"未找到装备， ID: {equipment_id}")
                 return None
         except sqlite3.Error as e:
             logger.error(f"查询装备 ID {equipment_id} 时发生数据库错误: {e}")

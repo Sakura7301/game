@@ -3,7 +3,6 @@ import re
 import time
 import json
 import random
-import tomllib
 import sqlite3
 import datetime
 import threading
@@ -14,49 +13,45 @@ from typing import Dict
 from .utils import get_multiple
 from loguru import logger
 from datetime import datetime, time as datetime_time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from .rouge_equipment import RougeEquipment
 from .monopoly import MonopolySystem
 from .fishing_system import FishingSystem
-from utils.plugin_base import PluginBase
-from WechatAPI import WechatAPIClient
-from utils.decorators import *
-from utils.plugin_base import PluginBase
+import plugins
+from plugins import *
+from bridge.reply import Reply, ReplyType
 
 
-class TextGame(PluginBase):
-    description = "文字游戏"
-    author = "Sakura7301"
-    version = "0.2.4"
-    is_ai_platform = True  # 标记为 AI 平台插件
-
+@plugins.register(
+    name="textGame",  # 插件名称
+    desire_priority=99,  # 插件优先级
+    hidden=False,  # 是否隐藏
+    desc="文字游戏",  # 插件描述
+    version="0.2.5",  # 插件版本
+    author="sakura7301",  # 作者
+)
+class textGame(Plugin):
     def __init__(self):
         super().__init__()
         # 初始化锁
         self.lock = threading.Lock()
         # 使用线程本地存储
         self.local = threading.local()
+        # 注册处理上下文的事件
+        self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_text_message
         try:
-            # 读取插件配置
-            config_path = os.path.join(os.path.dirname(__file__), "config.toml")
-            with open(config_path, "rb") as f:
-                config = tomllib.load(f)
-
-            # 获取TEXT_GAME配置
-            plugin_config = config.get("TextGame", {})
-
-            # 读取插件开启状态
-            self.enable = plugin_config.get("enable", True)
-
-            logger.info(f"TextGame插件开启状态: {self.enable}")
-
+            # 初始化配置
+            self.config = super().load_config()
+            # 加载配置模板
+            if not self.config:
+                self.config = self._load_config_template()
             # 检查data目录
             self.data_dir = os.path.join(os.path.dirname(__file__), "data")
             os.makedirs(self.data_dir, exist_ok=True)
             # 加载文件路径
             self.player_db_path = os.path.join(self.data_dir, "players.db")
             # 加载管理员密码
-            self.admin_password = plugin_config.get("admin_password", "7301")
+            self.admin_password = self.config.get("admin_password", "7301")
             # 初始化管理员列表
             self.admin_list = []
             # 游戏系统状态
@@ -79,11 +74,22 @@ class TextGame(PluginBase):
             except sqlite3.Error as e:
                 logger.error(f"玩家数据库连接或初始化失败: {e}")
                 raise
-            logger.info("[Game] 插件初始化完毕")
+            logger.info("[textGame] 插件初始化完毕")
         except Exception as e:
             logger.error(f"初始化游戏系统出错: {e}")
-            self.enable = False
+            self.game_status = False
             raise
+
+    def _load_config_template(self):
+        logger.debug("No textGame plugin config.json, use plugins/game/config.json.template")
+        try:
+            plugin_config_path = os.path.join(self.path, "config.json.template")
+            if os.path.exists(plugin_config_path):
+                with open(plugin_config_path, "r", encoding="utf-8") as f:
+                    plugin_conf = json.load(f)
+                    return plugin_conf
+        except Exception as e:
+            logger.exception(e)
 
     def _get_connection(self) -> sqlite3.Connection:
         """
@@ -371,36 +377,14 @@ class TextGame(PluginBase):
             raise
 
     def game_system_handle(self, message: Dict):
-        if self.enable is False:
-            logger.debug("TextGame插件未启用")
-            return None
-
         # 使用正确的消息属性名称
-        content = message.get("Content", "")
-        current_id = message.get("SenderWxid", "")
-        is_group = message.get("IsGroup", False)
+        content = message.content.strip()
+        current_id = message.kwargs['receiver']
 
         # 如果内容为空，不处理
         if not content:
             logger.debug("消息内容为空，不处理")
             return None
-        
-        if is_group:
-            # 移除@部分
-            query = content
-            logger.debug(f"原始@消息内容: '{query}'")
-
-            # 处理特殊空格字符 \u2005（四分之一em空格）
-            # 这个特殊空格常出现在微信@消息中
-            if '\u2005' in query:
-                parts = query.split('\u2005', 1)
-                if len(parts) > 1:
-                    # 保留第二部分（@名称后面的内容）
-                    query = parts[1].strip()
-                    logger.debug(f"处理特殊空格后的内容: '{query}'")
-                    content = query
-                else:
-                    return None
 
         if not self.game_status and content not in ['注册', '注销', '开机', '关机', '充值']:
             return "游戏系统当前已关闭"
@@ -431,7 +415,7 @@ class TextGame(PluginBase):
             "使用": lambda id: self.use_item(id, content),
             "排行": lambda id: self.show_leaderboard(id, content),
             "排行榜": lambda id: self.show_leaderboard(id, content),
-            "挑战": lambda id: self.attack_player(id, content, is_group),
+            "挑战": lambda id: self.attack_player(id, content),
             "接受挑战": lambda id: self.accept_challenge(id),
             "拒绝挑战": lambda id: self.refuse_challenge(id),
             "鉴权": lambda id: self.authenticate("鉴权", id, content),
@@ -477,31 +461,16 @@ class TextGame(PluginBase):
         return reply_str
 
 
-    @on_text_message(priority=80)
-    async def handle_text_message(self, client: WechatAPIClient, message: Dict):
+    def on_text_message(self, e_context: EventContext):
         """处理私聊消息"""
-        current_id = message.get("SenderWxid", "")
-        reply_str = self.game_system_handle(message)
+        reply_str = self.game_system_handle(e_context['context'])
+        reply = Reply()
+        reply.type = ReplyType.TEXT
         if reply_str is not None:
-            await client.send_text_message(current_id, reply_str)
-            # 已处理消息，阻止后续处理
-            return False
-
-    @on_at_message(priority=80)
-    async def handle_at_message(self, client: WechatAPIClient, message: Dict):
-        """处理@消息"""
-        group_id = message.get("FromWxid", "")
-        current_id = message.get("SenderWxid", "")
-        is_group = message.get("IsGroup", False)
-        if is_group:
-            reply_str = self.game_system_handle(message)
-            if reply_str is not None:
-                await client.send_at_message(group_id, f"\n{reply_str}", [current_id])
-                # 已处理消息，阻止后续处理
-                return False
-        else :  
-            # 私聊消息，直接转给handle_text_message处理
-            await self.handle_text_message(client, message)
+            reply.content = reply_str
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
         
     def game_help(self):
         return """
@@ -1652,7 +1621,7 @@ class TextGame(PluginBase):
             battle_log.append(f"\n[{monster_name}] 被打败了！😵")
 
         # 战斗结束
-        battle_log.append(f"战斗持续了{round_num}回合")
+        battle_log.append(f"\n战斗持续了{round_num}回合")
 
         # 重要事件统计
         if important_events:
@@ -1740,12 +1709,14 @@ class TextGame(PluginBase):
             battle_log.append(f"📚 获得 {award_exp} 经验值")
             battle_log.append(f"🪙 获得 {award_gold} 金币")
 
+            battle_log.append(f"\n🎁 战利品：")
             if drop_flag:
-                battle_log.append(f"\n战利品：")
                 if drop_consumables_str:
-                    battle_log.append(f"{drop_consumables_str}")
+                    battle_log.append(f"  {drop_consumables_str}")
                 if drop_explain:
-                    battle_log.append(f"{drop_explain}")
+                    battle_log.append(f"  {drop_explain}")
+            else:
+                battle_log.append(f"  空空的，什么也没有")
 
             if level_up:
                 battle_log.append(f"\n{level_up_str}")
@@ -2461,10 +2432,8 @@ class TextGame(PluginBase):
         battle_log.append(result)
         return "\n".join(battle_log)
 
-    def attack_player(self, user_id, content, is_group):
+    def attack_player(self, user_id, content):
         """ PVP 挑战其他玩家 """
-        if not is_group:
-            return "❌ 只能在群聊中使用攻击功能"
 
         # 解析命令内容
         parts = content.split()  # 分割命令为部分
@@ -2786,9 +2755,9 @@ class TextGame(PluginBase):
         if password == self.admin_password:
             # 认证成功，将用户添加到管理员列表中
             self.admin_list.append(user_id)
-            return "[Game] 认证成功"
+            return "[textGame] 认证成功"
         else:
-            return "[Game] 认证失败"
+            return "[textGame] 认证失败"
 
     def toggle_game_system(self, user_id, action='toggle'):
         """切换游戏系统状态"""

@@ -885,19 +885,20 @@ class Player:
 
         # 构建状态信息
         status = [
+            f"🔑 ID: {self.user_id}",
             f"🏷️ 玩家: {self.nickname}",
-            f"💳 余额: {self.gold}",
             f"📈 等级: {player_level}",
             f"📚 经验: {player_exp}/{int(self.get_exp_for_next_level(self.level))}",
             f"❤️ 生命: {player_hp}/{player_max_hp}",
             f"⚔️ 攻击力: {player_attack}",
             f"🛡️ 防御力: {player_defense}",
+            f"💳 余额: {self.gold}",
         ]
 
         # 如果发现异常，更新数据
         if needs_update:
             self.game._update_player_data(self.user_id, update_info)
-            status.insert(1, "⚠️ 检测到玩家异常，已自动修正")
+            logger.debug("检测到玩家数据异常，已自动修正")
 
         # 检查玩家是否装备武器
         if equipped_weapon:
