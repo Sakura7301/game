@@ -6,7 +6,7 @@ import sqlite3
 import random
 import secrets
 from . import constants
-from loguru import logger
+from common.log import logger
 from typing import Optional, Dict, Any
 
 

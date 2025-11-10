@@ -3,7 +3,7 @@ import re
 import uuid
 import json
 import sqlite3
-from loguru import logger
+from common.log import logger
 from . import constants
 
 

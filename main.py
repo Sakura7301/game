@@ -11,7 +11,7 @@ from .shop import Shop
 from .player import Player
 from typing import Dict
 from .utils import get_multiple
-from loguru import logger
+from common.log import logger
 from datetime import datetime, time as datetime_time
 from typing import Optional, Dict
 from .rouge_equipment import RougeEquipment
